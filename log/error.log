@@ -1,0 +1,7 @@
+2021-02-20 16:28:35 [CRT] [main.go:33] [main.main] err open databasessql: unknown driver "mysql" (forgotten import?)
+2021-02-20 16:33:35 [CRT] [main.go:32] [main.main] err open databasessql: unknown driver "mysql" (forgotten import?)
+2021-02-20 16:33:55 [CRT] [main.go:32] [main.main] err open databasessql: unknown driver "mysql" (forgotten import?)
+2021-02-20 16:40:06 [CRT] [main.go:32] [main.main] err open databasessql: unknown driver "mysql" (forgotten import?)
+2021-02-20 16:43:59 [CRT] [main.go:33] [main.main] err open databasessql: unknown driver "mysql" (forgotten import?)
+2021-02-20 16:45:17 [CRT] [main.go:34] [main.main] err open databasessql: unknown driver "mysql" (forgotten import?)
+2021-02-20 16:45:38 [CRT] [main.go:34] [main.main] err open databasessql: unknown driver "mysql" (forgotten import?)
