@@ -42,7 +42,6 @@ func main() {
 	fmt.Println("dbs success")
 	defer db.Close()
 
-
 	/*yaml*/
 	cluster := new(system.Configuration)
 	yamlFile, err := ioutil.ReadFile("conf/conf.yaml")
@@ -65,10 +64,5 @@ func main() {
 
 	router.POST("/signin", controllers.UserLogin)
 
-
-
-	http.ListenAndServe(cluster.Addr, router) //system.GetConfiguration().Addr
-	//router.Run(system.GetConfiguration().Addr)
+	http.ListenAndServe(cluster.Addr, router)
 }
-
-
