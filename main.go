@@ -63,6 +63,8 @@ func main() {
 	})
 
 	router.POST("/signin", controllers.UserLogin)
-
+	router.POST("/appletsUserInfo", controllers.AppletsUserInfo)
+	router.POST("/loginApplets", controllers.LoginApplets)
 	http.ListenAndServe(cluster.Addr, router)
+
 }

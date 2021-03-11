@@ -8,7 +8,6 @@ import (
 	"time"
 )
 
-
 /*struct定义*/
 
 // gorm.Model 的定义
@@ -19,19 +18,19 @@ type BaseModel struct {
 }
 
 type User struct {
-	UserOpenid	string	 		`json:"useropenid" binding:"required" gorm:"column:USER_OPEN_ID"`
-	UserName	string  		`json:"username" binding:"required" gorm:"column:USER_NAME"`
-	UserPhone   string			`gorm:"column:user_phone"`
-	UserCreatedTime time.Time	`gorm:"column:user_created_time"`
-	UserState int				`gorm:"column:user_state"`
-	UserBanTime time.Time		`gorm:"column:user_ban_time"`
-	UserPrivilege int			`gorm:"column:user_privilege"`
-	UserZone string				`gorm:"column:user_zone"`
-	UserZoneNumber int			`gorm:"column:user_zone_number"`
-	UserFileNumber int			`gorm:"column:user_file_number"`
-	UserContentNumber int		`gorm:"column:user_content_number"`
-	UserCommentNumber int		`gorm:"column:user_comment-number"`
-	UserManager string			`gorm:"column:user_manager"`
+	UserOpenid        string    `json:"useropenid" binding:"required" gorm:"column:USER_OPEN_ID"`
+	UserName          string    `json:"username" binding:"required" gorm:"column:USER_NAME"`
+	UserPhone         string    `gorm:"column:user_phone"`
+	UserCreatedTime   time.Time `gorm:"column:user_created_time"`
+	UserState         int       `gorm:"column:user_state"`
+	UserBanTime       time.Time `gorm:"column:user_ban_time"`
+	UserPrivilege     int       `gorm:"column:user_privilege"`
+	UserZone          string    `gorm:"column:user_zone"`
+	UserZoneNumber    int       `gorm:"column:user_zone_number"`
+	UserFileNumber    int       `gorm:"column:user_file_number"`
+	UserContentNumber int       `gorm:"column:user_content_number"`
+	UserCommentNumber int       `gorm:"column:user_comment_number"`
+	UserManager       string    `gorm:"column:user_manager"`
 }
 
 /*数据库*/
@@ -39,7 +38,7 @@ var DB *gorm.DB
 
 func InitDB() (*gorm.DB, error) {
 
-	db, err := gorm.Open("mysql", "root:123456@(127.0.0.1:3306)/zuccshare?charset=utf8&parseTime=True&loc=Local")
+	db, err := gorm.Open("mysql", "root:123456@(127.0.0.1:3306)/shuwo?charset=utf8&parseTime=True&loc=Local")
 
 	if err == nil {
 		DB = db
@@ -63,10 +62,38 @@ func (user *User) Update() error {
 	return DB.Save(user).Error
 }
 
-func UserLogin(username string,useropenid string) (*User, error){
+//微信授权登录
+func AppletsUserInfo(openid string, nickName string) (*User, error) {
+
+	var user = User{UserOpenid: openid, UserName: nickName, UserCreatedTime: time.Now()}
+
+	err := DB.Where("user_open_id=?", user.UserOpenid).Find(&user).Error
+
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+
+	if &user != nil {
+		log.Println("用户已存在")
+		return &user, err
+	}
+
+	if &user == nil {
+		err := DB.Create(&user).Error
+		if err != nil {
+			log.Println(err)
+		}
+		return &user, err
+	}
+
+	return nil, err
+}
+
+func UserLogin(username string, useropenid string) (*User, error) {
 
 	var user User
-	err := DB.Where("user_name = ? AND user_open_id = ?", username,useropenid).Find(&user).Error
+	err := DB.Where("user_name = ? AND user_open_id = ?", username, useropenid).Find(&user).Error
 
 	data, err := json.Marshal(user)
 	if err != nil {
@@ -76,10 +103,10 @@ func UserLogin(username string,useropenid string) (*User, error){
 	return &user, err
 }
 
-func GetUser() (*User, error) {
+func GetUser(openid string) error {
 	var user User
-	err := DB.Where("user_name=?","zzq").Find(&user).Error
-	return &user, err
+	err := DB.Where("user_open_id=?", openid).Find(&user).Error
+	return err
 }
 
 //
@@ -88,5 +115,3 @@ func GetUserByUsername(username string) (*User, error) {
 	err := DB.First(&user, "email = ?", username).Error
 	return &user, err
 }
-
-
