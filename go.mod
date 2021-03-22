@@ -14,6 +14,8 @@ require (
 	github.com/jinzhu/gorm v1.9.16 // indirect
 	github.com/jmoiron/sqlx v1.3.1 // indirect
 	github.com/json-iterator/go v1.1.10 // indirect
+	github.com/kr/fs v0.1.0 // indirect
+	github.com/kr/pretty v0.2.1 // indirect
 	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/mattn/go-sqlite3 v2.0.1+incompatible // indirect
 	github.com/microcosm-cc/bluemonday v1.0.4 // indirect
@@ -22,6 +24,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/russross/blackfriday v1.6.0 // indirect
 	github.com/snluu/uuid v0.0.0-20130306162636-1dd34a9ad6c0 // indirect
+	github.com/tools/godep v0.0.0-20180126220526-ce0bfadeb516 // indirect
 	github.com/ugorji/go v1.2.4 // indirect
 	github.com/wangsongyan/wblog v0.0.0-20190212134921-875ef9a6cda0
 	golang.org/x/crypto v0.0.0-20210218145215-b8e89b74b9df // indirect

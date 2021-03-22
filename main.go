@@ -62,9 +62,11 @@ func main() {
 		fmt.Println("hello!")
 	})
 
-	router.POST("/signin", controllers.UserLogin)
 	router.POST("/appletsUserInfo", controllers.AppletsUserInfo)
 	router.POST("/loginApplets", controllers.LoginApplets)
+	router.POST("/createContent", controllers.CreateContent)
+	router.POST("/getHotContentList", controllers.GetHotContentList)
+
 	http.ListenAndServe(cluster.Addr, router)
 
 }
