@@ -94,7 +94,8 @@ var DB *gorm.DB
 
 func InitDB() (*gorm.DB, error) {
 
-	db, err := gorm.Open("mysql", "root:123456@(127.0.0.1:3306)/shuwo?charset=utf8&parseTime=True&loc=Local")
+	//db, err := gorm.Open("mysql", "root:123456@(127.0.0.1:3306)/shuwo?charset=utf8&parseTime=True&loc=Local")
+	db, err := gorm.Open("mysql", "root:Zzq19990404.@(sh-cynosdbmysql-grp-8t1kxa1e.sql.tencentcdb.com:26707)/shuwo?charset=utf8&parseTime=True&loc=Local")
 
 	if err == nil {
 		DB = db
@@ -121,7 +122,7 @@ func (user *User) Update() error {
 //微信授权登录
 func AppletsUserInfo(openid string, nickName string, avatarurl string) (*User, error) {
 
-	var user = User{UserOpenid: openid, UserName: nickName, UserAvatarUrl: avatarurl, UserCreatedTime: time.Now()}
+	var user = User{UserOpenid: openid, UserName: nickName, UserAvatarUrl: avatarurl, UserCreatedTime: time.Now(), UserBanTime: time.Date(1999, 4, 4, 0, 0, 0, 0, time.Local)}
 
 	err := DB.Where("USER_OPEN_ID=?", user.UserOpenid).Find(&user).Error
 
