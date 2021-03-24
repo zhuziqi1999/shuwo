@@ -1,4 +1,4 @@
-module shuwo
+module github.com/zhuziqi1999/shuwo
 
 go 1.16
 

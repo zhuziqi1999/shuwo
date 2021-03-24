@@ -3,9 +3,9 @@ package controllers
 import (
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/zhuziqi1999/shuwo/models"
 	"log"
 	"net/http"
-	"shuwo/models"
 )
 
 func CreateContent(c *gin.Context) {

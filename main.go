@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"github.com/cihub/seelog"
 	"github.com/gin-gonic/gin"
-	"shuwo/controllers"
+	"github.com/zhuziqi1999/shuwo/controllers"
+	"github.com/zhuziqi1999/shuwo/models"
+	"github.com/zhuziqi1999/shuwo/system"
 
 	"github.com/go-yaml/yaml"
 	"io/ioutil"
 	"log"
 	"net/http"
-	"shuwo/models"
-	"shuwo/system"
 )
 
 func main() {
@@ -66,6 +66,8 @@ func main() {
 	router.POST("/loginApplets", controllers.LoginApplets)
 	router.POST("/createContent", controllers.CreateContent)
 	router.POST("/getHotContentList", controllers.GetHotContentList)
+	router.POST("/createGroup", controllers.CreateGroup)
+	router.POST("/getGroupList", controllers.GetGroupList)
 
 	http.ListenAndServe(cluster.Addr, router)
 

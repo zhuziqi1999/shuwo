@@ -20,6 +20,7 @@ type BaseModel struct {
 	UpdatedAt time.Time
 }
 
+//用户
 type User struct {
 	UserOpenid        string    `json:"useropenid"  gorm:"column:USER_OPEN_ID"`
 	UserName          string    `json:"username"  gorm:"column:USER_NAME"`
@@ -36,6 +37,7 @@ type User struct {
 	UserManager       string    `gorm:"column:USER_MANAGER"`
 }
 
+//动态内容
 type Content struct {
 	ContentID              string    `json:"contentid" gorm:"column:CONTENT_ID"`
 	ContentCreatedBy       string    `json:"contentcreatedby" gorm:"column:CONTENT_CREATED_BY"`
@@ -53,10 +55,38 @@ type Content struct {
 	ContentIsHot           int       `json:"contentishot" gorm:"column:CONTENT_IS_HOT"`
 }
 
+//用于发送到前端的动态信息
 type ContentWithUser struct {
 	Content
-	UserName      string `json:"username"  gorm:"column:USER_NAME"`
-	UserAvatarUrl string `json:"useravatarurl"  gorm:"column:USER_AVATAR_URL"`
+	UserName      string `json:"username" gorm:"column:USER_NAME"`
+	UserAvatarUrl string `json:"useravatarurl" gorm:"column:USER_AVATAR_URL"`
+}
+
+//小组
+type Group struct {
+	GroupID          string    `json:"groupid"  gorm:"column:GROUP_ID"`
+	GroupName        string    `json:"groupname"  gorm:"column:GROUP_NAME"`
+	GroupRemark      string    `json:"groupremark"  gorm:"column:GROUP_REMARK"`
+	GroupNumber      int       `json:"groupnumber"  gorm:"column:GROUP_NUMBER"`
+	GroupCreatedBy   string    `json:"groupcreatedby"  gorm:"column:GROUP_CREATED_BY"`
+	GroupCreatedTime time.Time `json:"groupcreatedtime"  gorm:"column:GROUP_CREATED_TIME"`
+	GroupState       int       `json:"groupstate"  gorm:"column:GROUP_STATE"`
+}
+
+//用户加入小组
+type UserGroup struct {
+	ID      int       `json:"id"  gorm:"column:ID"`
+	GroupID string    `json:"groupid"  gorm:"column:GROUP_ID"`
+	UserID  string    `json:"userid"  gorm:"column:USER_ID"`
+	State   int       `json:"state"  gorm:"column:STATE"`
+	InTime  time.Time `json:"intime"  gorm:"column:IN_TIME"`
+	OutTime time.Time `json:"outtime"  gorm:"column:OUT_TIME"`
+}
+
+//返回的group列表
+type GroupList struct {
+	Group
+	IsInGroup int `json:isingroup"`
 }
 
 /*数据库*/
@@ -93,7 +123,7 @@ func AppletsUserInfo(openid string, nickName string, avatarurl string) (*User, e
 
 	var user = User{UserOpenid: openid, UserName: nickName, UserAvatarUrl: avatarurl, UserCreatedTime: time.Now()}
 
-	err := DB.Where("user_open_id=?", user.UserOpenid).Find(&user).Error
+	err := DB.Where("USER_OPEN_ID=?", user.UserOpenid).Find(&user).Error
 
 	if err != nil {
 		log.Println(err)
@@ -115,7 +145,7 @@ func AppletsUserInfo(openid string, nickName string, avatarurl string) (*User, e
 func UserLogin(username string, useropenid string) (*User, error) {
 
 	var user User
-	err := DB.Where("user_name = ? AND user_open_id = ?", username, useropenid).Find(&user).Error
+	err := DB.Where("USER_NAME = ? AND USER_OPEN_ID = ?", username, useropenid).Find(&user).Error
 
 	data, err := json.Marshal(user)
 	if err != nil {
@@ -127,13 +157,13 @@ func UserLogin(username string, useropenid string) (*User, error) {
 
 func GetUser(openid string) error {
 	var user User
-	err := DB.Where("user_open_id=?", openid).Find(&user).Error
+	err := DB.Where("USER_OPEN_ID=?", openid).Find(&user).Error
 	return err
 }
 
 func GetUserByUsername(username string) (*User, error) {
 	var user User
-	err := DB.First(&user, "email = ?", username).Error
+	err := DB.First(&user, "EMAIL = ?", username).Error
 	return &user, err
 }
 
@@ -143,9 +173,7 @@ func CreateContent(openid string, text string, file string) (*Content, error) {
 	timeUnix := time.Now().Unix()                                                           //获取时间戳
 	randomnumber := rand.New(rand.NewSource(time.Now().UnixNano())).Int31n(1000000)         //获取六位随机数
 	var contentid = "N" + strconv.FormatInt(timeUnix, 10) + strconv.Itoa(int(randomnumber)) //组成唯一ID
-	fmt.Println("contentid:" + contentid)
-	fmt.Println("randomnumber:" + strconv.Itoa(int(randomnumber)))
-	fmt.Println("timeUnix:" + strconv.FormatInt(timeUnix, 10))
+
 	var content = Content{ContentID: contentid, ContentCreatedBy: openid, ContentCreatedTime: time.Now(), ContentText: text, ContentShare: file, ContentShareNumber: 1, ContentComments: 0, ContentLikes: 0, ContentIsHot: 1, ContentShareType: 1, ContentState: 0, ContentCreatedTimeUnix: time.Now().Unix()}
 
 	err := DB.Create(&content).Error
@@ -166,12 +194,77 @@ func GetHotContentList() (contentwithuser []ContentWithUser) {
 		return nil
 	}
 	slice := make([]ContentWithUser, len(content))
-	DB.Table("content").Select("CONTENT_ID, CONTENT_CREATED_BY, CONTENT_CREATED_TIME, CONTENT_TEXT, CONTENT_SHARE, CONTENT_SHARE_NUMBER, "+
+	DB.Table("CONTENT").Select("CONTENT_ID, CONTENT_CREATED_BY, CONTENT_CREATED_TIME, CONTENT_TEXT, CONTENT_SHARE, CONTENT_SHARE_NUMBER, "+
 		"CONTENT_UPDATED_TIME, CONTENT_STATE, CONTENT_SHARE_TYPE, CONTENT_LIKES, CONTENT_COMMENTS, CONTENT_IS_HOT, CONTENT_CREATED_TIME_UNIX, CONTENT_UPDATED_TIME_UNIX").Where("CONTENT_IS_HOT = ?", 1).Scan(&slice)
 	for i := 0; i < len(content); i++ {
 
-		DB.Table("user").Select("USER_NAME, USER_AVATAR_URL").Where("user_open_id = ?", content[i].ContentCreatedBy).Scan(&slice[i])
+		DB.Raw("SELECT USER_NAME, USER_AVATAR_URL FROM USER  WHERE USER_OPEN_ID = ?", content[i].ContentCreatedBy).First(&slice[i])
+	}
 
+	return slice
+}
+
+/*group*/
+func CreateGroup(openid string, groupname string, groupremark string) (*Group, error) {
+	timeUnix := time.Now().Unix()                                                         //获取时间戳
+	randomnumber := rand.New(rand.NewSource(time.Now().UnixNano())).Int31n(1000000)       //获取六位随机数
+	var groupid = "G" + strconv.FormatInt(timeUnix, 10) + strconv.Itoa(int(randomnumber)) //组成唯一ID
+
+	var group = Group{GroupID: groupid, GroupCreatedBy: openid, GroupCreatedTime: time.Now(), GroupName: groupname, GroupNumber: 0, GroupRemark: groupremark, GroupState: 1}
+
+	err := DB.Create(&group).Error
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	return &group, err
+}
+
+func InGroup(openid string, groupid string) error {
+	var usergroup UserGroup
+	err := DB.Where("OPEN_ID = ? AND GROUP_ID = ?", openid, groupid).First(&usergroup).Error
+
+	//查询结果为空，新建一条记录
+	if err != nil {
+		usergroup = UserGroup{UserID: openid, GroupID: groupid, InTime: time.Now(), State: 1}
+
+		err = DB.Create(&usergroup).Error
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+
+	}
+
+	if err == nil {
+		DB.Model(&usergroup).Where("OPEN_ID = ? AND GROUP_ID = ? AND STATE = ?", openid, groupid, 0).Update("STATE", 1)
+		return err
+	}
+
+	return err
+}
+
+func GetGroupList(openid string) (grouplist []GroupList) {
+	var usergroup UserGroup
+	var group []Group
+	err := DB.Where("GROUP_STATE = ?", 1).Find(&group).Error
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+	slice := make([]GroupList, len(group))
+
+	DB.Table("GROUP").Select("GROUP_ID, GROUP_NAME, GROUP_REMARK, GROUP_NUMBER, GROUP_CREATED_BY, GROUP_CREATED_TIME, GROUP_STATE").Where("GROUP_STATE = ?", 1).Scan(&slice)
+
+	for i := 0; i < len(group); i++ {
+		err = DB.Where("USER_ID = ? AND GROUP_ID = ? AND STATE = ?", openid, group[i].GroupID, 1).First(&usergroup).Error
+		if err == nil {
+			slice[i].IsInGroup = 1
+		}
+
+		if err != nil {
+			slice[i].IsInGroup = 0
+		}
 	}
 
 	return slice

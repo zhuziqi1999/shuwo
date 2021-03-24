@@ -2,9 +2,10 @@ package controllers
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/zhuziqi1999/shuwo/helpers"
+	"github.com/zhuziqi1999/shuwo/system"
 	"net/http"
-	"shuwo/helpers"
-	"shuwo/system"
+
 	"strings"
 )
 
