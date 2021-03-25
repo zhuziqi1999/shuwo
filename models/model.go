@@ -195,11 +195,11 @@ func GetHotContentList() (contentwithuser []ContentWithUser) {
 		return nil
 	}
 	slice := make([]ContentWithUser, len(content))
-	DB.Table("CONTENT").Select("CONTENT_ID, CONTENT_CREATED_BY, CONTENT_CREATED_TIME, CONTENT_TEXT, CONTENT_SHARE, CONTENT_SHARE_NUMBER, "+
+	DB.Table("content").Select("CONTENT_ID, CONTENT_CREATED_BY, CONTENT_CREATED_TIME, CONTENT_TEXT, CONTENT_SHARE, CONTENT_SHARE_NUMBER, "+
 		"CONTENT_UPDATED_TIME, CONTENT_STATE, CONTENT_SHARE_TYPE, CONTENT_LIKES, CONTENT_COMMENTS, CONTENT_IS_HOT, CONTENT_CREATED_TIME_UNIX, CONTENT_UPDATED_TIME_UNIX").Where("CONTENT_IS_HOT = ?", 1).Scan(&slice)
 	for i := 0; i < len(content); i++ {
 
-		DB.Raw("SELECT USER_NAME, USER_AVATAR_URL FROM USER  WHERE USER_OPEN_ID = ?", content[i].ContentCreatedBy).First(&slice[i])
+		DB.Raw("SELECT USER_NAME, USER_AVATAR_URL FROM user  WHERE USER_OPEN_ID = ?", content[i].ContentCreatedBy).First(&slice[i])
 	}
 
 	return slice
@@ -223,25 +223,40 @@ func CreateGroup(openid string, groupname string, groupremark string) (*Group, e
 
 func InGroup(openid string, groupid string) error {
 	var usergroup UserGroup
-	err := DB.Where("OPEN_ID = ? AND GROUP_ID = ?", openid, groupid).First(&usergroup).Error
+	err := DB.Where("USER_ID = ? AND GROUP_ID = ? ", openid, groupid).First(&usergroup).Error
 
 	//查询结果为空，新建一条记录
 	if err != nil {
-		usergroup = UserGroup{UserID: openid, GroupID: groupid, InTime: time.Now(), State: 1}
+		usergroup = UserGroup{UserID: openid, GroupID: groupid, InTime: time.Now(), State: 1, OutTime: time.Date(1999, 4, 4, 0, 0, 0, 0, time.Local)}
 
 		err = DB.Create(&usergroup).Error
 		if err != nil {
 			log.Println(err)
 			return err
 		}
-
-	}
-
-	if err == nil {
-		DB.Model(&usergroup).Where("OPEN_ID = ? AND GROUP_ID = ? AND STATE = ?", openid, groupid, 0).Update("STATE", 1)
 		return err
 	}
 
+	//如果查询结果存在，且用户已不在改小组，则更新状态
+	usergroup.State = 1
+	err = DB.Model(&usergroup).Where("USER_ID = ? AND GROUP_ID = ? AND STATE = ?", openid, groupid, 0).Update("STATE", 1).Error
+	if err != nil {
+		fmt.Println(err)
+		return err
+
+	}
+	return err
+}
+
+func OutGroup(openid string, groupid string) error {
+	var usergroup UserGroup
+
+	err := DB.Model(&usergroup).Where("USER_ID = ? AND GROUP_ID = ? AND STATE = ?", openid, groupid, 1).Update("STATE", 0).Error
+	if err != nil {
+		fmt.Println(err)
+		return err
+
+	}
 	return err
 }
 
@@ -255,7 +270,7 @@ func GetGroupList(openid string) (grouplist []GroupList) {
 	}
 	slice := make([]GroupList, len(group))
 
-	DB.Table("GROUP").Select("GROUP_ID, GROUP_NAME, GROUP_REMARK, GROUP_NUMBER, GROUP_CREATED_BY, GROUP_CREATED_TIME, GROUP_STATE").Where("GROUP_STATE = ?", 1).Scan(&slice)
+	DB.Table("group").Select("GROUP_ID, GROUP_NAME, GROUP_REMARK, GROUP_NUMBER, GROUP_CREATED_BY, GROUP_CREATED_TIME, GROUP_STATE").Where("GROUP_STATE = ?", 1).Scan(&slice)
 
 	for i := 0; i < len(group); i++ {
 		err = DB.Where("USER_ID = ? AND GROUP_ID = ? AND STATE = ?", openid, group[i].GroupID, 1).First(&usergroup).Error

@@ -26,6 +26,7 @@ require (
 	github.com/snluu/uuid v0.0.0-20130306162636-1dd34a9ad6c0
 	github.com/tools/godep v0.0.0-20180126220526-ce0bfadeb516 // indirect
 	github.com/ugorji/go v1.2.4 // indirect
+	github.com/unrolled/secure v1.0.8 // indirect
 	github.com/wangsongyan/wblog v0.0.0-20190212134921-875ef9a6cda0 // indirect
 	golang.org/x/crypto v0.0.0-20210218145215-b8e89b74b9df // indirect
 	golang.org/x/sys v0.0.0-20210218155724-8ebf48af031b // indirect

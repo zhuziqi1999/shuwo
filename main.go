@@ -58,16 +58,24 @@ func main() {
 	/*gin*/
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.Default()
+
 	router.POST("/hello", func(c *gin.Context) {
 		fmt.Println("hello!")
 	})
 
+	//user
 	router.POST("/appletsUserInfo", controllers.AppletsUserInfo)
 	router.POST("/loginApplets", controllers.LoginApplets)
+
+	//content
 	router.POST("/createContent", controllers.CreateContent)
 	router.POST("/getHotContentList", controllers.GetHotContentList)
+
+	//group
 	router.POST("/createGroup", controllers.CreateGroup)
 	router.POST("/getGroupList", controllers.GetGroupList)
+	router.POST("/inGroup", controllers.InGroup)
+	router.POST("/outGroup", controllers.OutGroup)
 
 	http.ListenAndServe(cluster.Addr, router)
 

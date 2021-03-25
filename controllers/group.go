@@ -71,3 +71,67 @@ func GetGroupList(c *gin.Context) {
 	})
 
 }
+
+func InGroup(c *gin.Context) {
+	var (
+		usergroup models.UserGroup
+	)
+
+	if err := c.ShouldBindJSON(&usergroup); err != nil {
+		// 返回错误信息
+		// gin.H封装了生成json数据的工具
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		fmt.Println("err:", err)
+		return
+	}
+
+	err := models.InGroup(usergroup.UserID, usergroup.GroupID)
+
+	if err != nil {
+		fmt.Println(err)
+		c.JSON(http.StatusExpectationFailed, gin.H{
+			"code":    0,
+			"message": err,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    1,
+		"message": "加入成功",
+	})
+
+	return
+}
+
+func OutGroup(c *gin.Context) {
+	var (
+		usergroup models.UserGroup
+	)
+
+	if err := c.ShouldBindJSON(&usergroup); err != nil {
+		// 返回错误信息
+		// gin.H封装了生成json数据的工具
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		fmt.Println("err:", err)
+		return
+	}
+
+	err := models.OutGroup(usergroup.UserID, usergroup.GroupID)
+
+	if err != nil {
+		fmt.Println(err)
+		c.JSON(http.StatusExpectationFailed, gin.H{
+			"code":    0,
+			"message": err,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    1,
+		"message": "退出成功",
+	})
+
+	return
+}
