@@ -62,7 +62,6 @@ func GetGroupList(c *gin.Context) {
 		return
 	}
 
-	fmt.Println("openid: ", user.UserOpenid)
 	group = models.GetGroupList(user.UserOpenid)
 
 	c.JSON(http.StatusOK, gin.H{

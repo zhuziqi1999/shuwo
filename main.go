@@ -70,12 +70,21 @@ func main() {
 	//content
 	router.POST("/createContent", controllers.CreateContent)
 	router.POST("/getHotContentList", controllers.GetHotContentList)
+	router.POST("/likeContent", controllers.LikeContent)
+	router.POST("/unlikeContent", controllers.UnlikeContent)
+	router.POST("/getLikeList", controllers.GetLikeList)
+	router.POST("/collectContent", controllers.CollectContent)
+	router.POST("/uncollectContent", controllers.UncollectContent)
 
 	//group
 	router.POST("/createGroup", controllers.CreateGroup)
 	router.POST("/getGroupList", controllers.GetGroupList)
 	router.POST("/inGroup", controllers.InGroup)
 	router.POST("/outGroup", controllers.OutGroup)
+
+	//comment
+	router.POST("/createComment", controllers.CreateComment)
+	router.POST("/getCommentList", controllers.GetCommentList)
 
 	http.ListenAndServe(cluster.Addr, router)
 

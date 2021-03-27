@@ -22,7 +22,7 @@ func CreateContent(c *gin.Context) {
 		return
 	}
 
-	content, err := models.CreateContent(content.ContentCreatedBy, content.ContentText, content.ContentShare)
+	content, err := models.CreateContent(content.ContentCreatedBy, content.ContentText, content.ContentShare, content.ContentFrom)
 
 	if err != nil {
 		log.Println(err)
@@ -43,12 +43,173 @@ func CreateContent(c *gin.Context) {
 func GetHotContentList(c *gin.Context) {
 	var (
 		content interface{}
+		user    = &models.User{}
 	)
-	content = models.GetHotContentList()
+
+	if err := c.ShouldBindJSON(&user); err != nil {
+		// 返回错误信息
+		// gin.H封装了生成json数据的工具
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		fmt.Println("err:", err)
+		return
+	}
+
+	content = models.GetHotContentList(user.UserOpenid)
 
 	c.JSON(http.StatusOK, gin.H{
 		"code":    1,
 		"content": content,
 	})
 
+}
+
+func LikeContent(c *gin.Context) {
+	var (
+		userlikecontent models.UserLikeContent
+	)
+
+	if err := c.ShouldBindJSON(&userlikecontent); err != nil {
+		// 返回错误信息
+		// gin.H封装了生成json数据的工具
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		fmt.Println("err:", err)
+		return
+	}
+
+	err := models.LikeContent(userlikecontent.UserID, userlikecontent.ContentID)
+
+	if err != nil {
+		fmt.Println(err)
+		c.JSON(http.StatusExpectationFailed, gin.H{
+			"code":    0,
+			"message": err,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    1,
+		"message": "点赞成功",
+	})
+
+	return
+}
+
+func UnlikeContent(c *gin.Context) {
+	var (
+		userlikecontent models.UserLikeContent
+	)
+
+	if err := c.ShouldBindJSON(&userlikecontent); err != nil {
+		// 返回错误信息
+		// gin.H封装了生成json数据的工具
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		fmt.Println("err:", err)
+		return
+	}
+
+	err := models.UnlikeContent(userlikecontent.UserID, userlikecontent.ContentID)
+
+	if err != nil {
+		fmt.Println(err)
+		c.JSON(http.StatusExpectationFailed, gin.H{
+			"code":    0,
+			"message": err,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    1,
+		"message": "取消点赞成功",
+	})
+
+	return
+}
+
+func GetLikeList(c *gin.Context) {
+	var (
+		likelist interface{}
+		content  = &models.Content{}
+	)
+
+	if err := c.ShouldBindJSON(&content); err != nil {
+		// 返回错误信息
+		// gin.H封装了生成json数据的工具
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		fmt.Println("err:", err)
+		return
+	}
+
+	likelist = models.GetLikeList(content.ContentID)
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":     1,
+		"likelist": likelist,
+	})
+
+}
+
+func CollectContent(c *gin.Context) {
+	var (
+		usercollectcontent models.UserCollectContent
+	)
+
+	if err := c.ShouldBindJSON(&usercollectcontent); err != nil {
+		// 返回错误信息
+		// gin.H封装了生成json数据的工具
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		fmt.Println("err:", err)
+		return
+	}
+
+	err := models.CollectContent(usercollectcontent.UserID, usercollectcontent.ContentID)
+
+	if err != nil {
+		fmt.Println(err)
+		c.JSON(http.StatusExpectationFailed, gin.H{
+			"code":    0,
+			"message": err,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    1,
+		"message": "收藏成功",
+	})
+
+	return
+}
+
+func UncollectContent(c *gin.Context) {
+	var (
+		usercollectcontent models.UserCollectContent
+	)
+
+	if err := c.ShouldBindJSON(&usercollectcontent); err != nil {
+		// 返回错误信息
+		// gin.H封装了生成json数据的工具
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		fmt.Println("err:", err)
+		return
+	}
+
+	err := models.UncollectContent(usercollectcontent.UserID, usercollectcontent.ContentID)
+
+	if err != nil {
+		fmt.Println(err)
+		c.JSON(http.StatusExpectationFailed, gin.H{
+			"code":    0,
+			"message": err,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    1,
+		"message": "取消收藏成功",
+	})
+
+	return
 }
