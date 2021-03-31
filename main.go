@@ -63,13 +63,15 @@ func main() {
 		fmt.Println("hello!")
 	})
 
+	router.MaxMultipartMemory = 8 << 20 // 8 MiB
+
 	//user
 	router.POST("/appletsUserInfo", controllers.AppletsUserInfo)
 	router.POST("/loginApplets", controllers.LoginApplets)
 
 	//content
 	router.POST("/createContent", controllers.CreateContent)
-	router.POST("/getHotContentList", controllers.GetHotContentList)
+	router.POST("/getContentList", controllers.GetContentList)
 	router.POST("/likeContent", controllers.LikeContent)
 	router.POST("/unlikeContent", controllers.UnlikeContent)
 	router.POST("/getLikeList", controllers.GetLikeList)
@@ -81,10 +83,17 @@ func main() {
 	router.POST("/getGroupList", controllers.GetGroupList)
 	router.POST("/inGroup", controllers.InGroup)
 	router.POST("/outGroup", controllers.OutGroup)
+	router.POST("/getMyGroupList", controllers.GetMyGroupList)
 
 	//comment
 	router.POST("/createComment", controllers.CreateComment)
 	router.POST("/getCommentList", controllers.GetCommentList)
+
+	//file
+	router.POST("/upload", controllers.UploadFile)
+
+	//folder
+	router.POST("/createFolder", controllers.CreateFolder)
 
 	http.ListenAndServe(cluster.Addr, router)
 

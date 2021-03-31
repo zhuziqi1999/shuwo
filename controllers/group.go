@@ -134,3 +134,26 @@ func OutGroup(c *gin.Context) {
 
 	return
 }
+
+func GetMyGroupList(c *gin.Context) {
+	var (
+		group interface{}
+		user  = &models.User{}
+	)
+
+	if err := c.ShouldBindJSON(&user); err != nil {
+		// 返回错误信息
+		// gin.H封装了生成json数据的工具
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		fmt.Println("err:", err)
+		return
+	}
+
+	group = models.GetMyGroupList(user.UserOpenid)
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    1,
+		"content": group,
+	})
+
+}

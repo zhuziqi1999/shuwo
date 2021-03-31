@@ -40,13 +40,18 @@ func CreateContent(c *gin.Context) {
 
 }
 
-func GetHotContentList(c *gin.Context) {
+func GetContentList(c *gin.Context) {
+	type n struct {
+		UserOpenID string `json:"useropenid"  gorm:"column:USER_OPEN_ID"`
+		GroupID    string `json:"groupid"  gorm:"column:GROUP_ID"`
+	}
+
 	var (
 		content interface{}
-		user    = &models.User{}
+		group   n
 	)
 
-	if err := c.ShouldBindJSON(&user); err != nil {
+	if err := c.ShouldBindJSON(&group); err != nil {
 		// 返回错误信息
 		// gin.H封装了生成json数据的工具
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -54,7 +59,7 @@ func GetHotContentList(c *gin.Context) {
 		return
 	}
 
-	content = models.GetHotContentList(user.UserOpenid)
+	content = models.GetContentList(group.UserOpenID, group.GroupID)
 
 	c.JSON(http.StatusOK, gin.H{
 		"code":    1,

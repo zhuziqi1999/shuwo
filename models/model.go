@@ -96,6 +96,7 @@ type UserCollectContent struct {
 type Group struct {
 	GroupID          string    `json:"groupid"  gorm:"column:GROUP_ID"`
 	GroupName        string    `json:"groupname"  gorm:"column:GROUP_NAME"`
+	GroupAvatarUrl   string    `json:"groupavatarurl"  gorm:"column:GROUP_AVATAR_URL"`
 	GroupRemark      string    `json:"groupremark"  gorm:"column:GROUP_REMARK"`
 	GroupNumber      int       `json:"groupnumber"  gorm:"column:GROUP_NUMBER"`
 	GroupCreatedBy   string    `json:"groupcreatedby"  gorm:"column:GROUP_CREATED_BY"`
@@ -137,6 +138,17 @@ type CommentList struct {
 	Comment
 	UserName      string `json:"username" gorm:"column:USER_NAME"`
 	UserAvatarUrl string `json:"useravatarurl" gorm:"column:USER_AVATAR_URL"`
+}
+
+//folder
+type Folder struct {
+	FolderID              string    `json:"folderid" gorm:"column:FOLDER_ID"`
+	FolderName            string    `json:"foldername" gorm:"column:FOLDER_NAME"`
+	FolderCreatedBy       string    `json:"foldercreatedby" gorm:"column:FOLDER_CREATED_BY"`
+	FolderCreatedTime     time.Time `json:"foldercreatedtime" gorm:"column:FOLDER_CREATED_TIME"`
+	FolderCreatedTimeUnix int64     `json:"foldercreatedtimeunix"  gorm:"column:FOLDER_CREATED_TIME_UNIX"`
+	FolderParentID        string    `json:"folderparentid" gorm:"column:FOLDER_PARENT_ID"`
+	FolderState           int       `json:"folderstate" gorm:"column:FOLDER_STATE"`
 }
 
 /*数据库*/
@@ -358,23 +370,41 @@ func UncollectContent(openid string, contentid string) error {
 	return err
 }
 
-func GetHotContentList(openid string) (contentwithuser []ContentWithUser) {
+func GetContentList(openid string, groupid string) (contentwithuser []ContentWithUser) {
 	var content []Content
 	var userlikecontent UserLikeContent
 	var usercollectcontent UserCollectContent
-
-	err := DB.Where("CONTENT_IS_HOT = ?", 1).Find(&content).Error
-	if err != nil {
-		fmt.Println(err)
-		return nil
+	if groupid != "" {
+		err := DB.Where(" CONTENT_FROM = ?", groupid).Find(&content).Error
+		if err != nil {
+			fmt.Println(err)
+			return nil
+		}
 	}
+
+	if groupid == "" {
+		err := DB.Find(&content).Error
+		if err != nil {
+			fmt.Println(err)
+			return nil
+		}
+	}
+
 	slice := make([]ContentWithUser, len(content))
-	DB.Table("content").Select("CONTENT_ID, CONTENT_CREATED_BY, CONTENT_CREATED_TIME, CONTENT_TEXT, CONTENT_SHARE, CONTENT_SHARE_NUMBER, "+
-		"CONTENT_UPDATED_TIME, CONTENT_STATE, CONTENT_SHARE_TYPE, CONTENT_LIKES, CONTENT_COMMENTS, CONTENT_IS_HOT, CONTENT_CREATED_TIME_UNIX, CONTENT_UPDATED_TIME_UNIX").Where("CONTENT_IS_HOT = ?", 1).Scan(&slice)
+	if groupid != "" {
+		DB.Table("content").Select("CONTENT_ID, CONTENT_CREATED_BY, CONTENT_CREATED_TIME, CONTENT_TEXT, CONTENT_SHARE, CONTENT_SHARE_NUMBER, "+
+			"CONTENT_UPDATED_TIME, CONTENT_STATE, CONTENT_SHARE_TYPE, CONTENT_LIKES, CONTENT_COMMENTS, CONTENT_IS_HOT, CONTENT_CREATED_TIME_UNIX, CONTENT_UPDATED_TIME_UNIX").Where("CONTENT_FROM = ?", groupid).Scan(&slice)
+	}
+
+	if groupid == "" {
+		DB.Table("content").Select("CONTENT_ID, CONTENT_CREATED_BY, CONTENT_CREATED_TIME, CONTENT_TEXT, CONTENT_SHARE, CONTENT_SHARE_NUMBER, " +
+			"CONTENT_UPDATED_TIME, CONTENT_STATE, CONTENT_SHARE_TYPE, CONTENT_LIKES, CONTENT_COMMENTS, CONTENT_IS_HOT, CONTENT_CREATED_TIME_UNIX, CONTENT_UPDATED_TIME_UNIX").Scan(&slice)
+	}
+
 	for i := 0; i < len(content); i++ {
 		DB.Raw("SELECT USER_NAME, USER_AVATAR_URL FROM user WHERE USER_OPEN_ID = ?", content[i].ContentCreatedBy).First(&slice[i])
 		DB.Table("group").Select("GROUP_NAME").Where("GROUP_ID = ?", content[i].ContentFrom).Scan(&slice[i])
-		err = DB.Where("USER_ID = ? AND CONTENT_ID = ? AND STATE = ?", openid, content[i].ContentID, 1).First(&userlikecontent).Error
+		err := DB.Where("USER_ID = ? AND CONTENT_ID = ? AND STATE = ?", openid, content[i].ContentID, 1).First(&userlikecontent).Error
 		if err == nil {
 			slice[i].IsLiked = 1
 		}
@@ -510,4 +540,42 @@ func GetCommentList(contentid string) (commentlist []CommentList) {
 	}
 
 	return slice
+}
+
+func GetMyGroupList(openid string) (group []Group) {
+	var usergroup []UserGroup
+
+	err := DB.Where("USER_ID = ? AND STATE = ?", openid, 1).Find(&usergroup).Error
+
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+
+	slice := make([]Group, len(usergroup))
+
+	for i := 0; i < len(usergroup); i++ {
+		DB.Table("group").Select("GROUP_ID, GROUP_NAME, GROUP_REMARK, GROUP_NUMBER, GROUP_CREATED_BY, GROUP_CREATED_TIME, GROUP_STATE, GROUP_AVATAR_URL").Where("GROUP_ID = ?", usergroup[i].GroupID).First(&slice[i])
+	}
+
+	return slice
+}
+
+func CreateFolder(openid string, foldername string, parentid string) (*Folder, error) {
+	timeUnix := time.Now().Unix()                                                           //获取时间戳
+	randomnumber := rand.New(rand.NewSource(time.Now().UnixNano())).Int31n(1000000)         //获取六位随机数
+	var folderid = "FD" + strconv.FormatInt(timeUnix, 10) + strconv.Itoa(int(randomnumber)) //组成唯一ID
+
+	var folder = Folder{FolderCreatedBy: openid, FolderCreatedTime: time.Now(), FolderCreatedTimeUnix: timeUnix, FolderID: folderid, FolderName: foldername, FolderParentID: parentid, FolderState: 1}
+
+	err := DB.Create(&folder).Error
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	return &folder, err
+}
+
+func getFoldList() {
+
 }
