@@ -94,6 +94,13 @@ func main() {
 
 	//folder
 	router.POST("/createFolder", controllers.CreateFolder)
+	router.POST("/getFolderList", controllers.GetFolderList)
+	router.POST("/deleteFolder", controllers.DeleteFolder)
+
+	//message
+	router.POST("/getLikeMessageList", controllers.GetLikeMessageList)
+	router.POST("/getCommentMessageList", controllers.GetCommentMessageList)
+	router.POST("/getCollectMessageList", controllers.GetCollectMessageList)
 
 	http.ListenAndServe(cluster.Addr, router)
 

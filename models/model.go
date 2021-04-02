@@ -68,28 +68,40 @@ type ContentWithUser struct {
 
 //用户点赞表
 type UserLikeContent struct {
-	ID        int       `json:"id"  gorm:"column:ID"`
-	ContentID string    `json:"contentid"  gorm:"column:CONTENT_ID"`
-	UserID    string    `json:"userid"  gorm:"column:USER_ID"`
-	State     int       `json:"state"  gorm:"column:STATE"`
-	InTime    time.Time `json:"intime"  gorm:"column:IN_TIME"`
-	OutTime   time.Time `json:"outime"  gorm:"column:OUT_TIME"`
+	ID          int       `json:"id"  gorm:"column:ID"`
+	ContentID   string    `json:"contentid"  gorm:"column:CONTENT_ID"`
+	UserID      string    `json:"userid"  gorm:"column:USER_ID"`
+	LikedUserID string    `json:"likeduserid"  gorm:"column:LIKED_USER_ID"`
+	State       int       `json:"state"  gorm:"column:STATE"`
+	InTime      time.Time `json:"intime"  gorm:"column:IN_TIME"`
+	InTimeUnix  int64     `json:"intimeunix"  gorm:"column:IN_TIME_UNIX"`
+	OutTime     time.Time `json:"outime"  gorm:"column:OUT_TIME"`
 }
 
 type LikeList struct {
 	UserLikeContent
 	UserName      string `json:"username" gorm:"column:USER_NAME"`
 	UserAvatarUrl string `json:"useravatarurl" gorm:"column:USER_AVATAR_URL"`
+	ContentText   string `json:"contenttext" gorm:"column:CONTENT_TEXT"`
 }
 
 //用户收藏表
 type UserCollectContent struct {
-	ID        int       `json:"id"  gorm:"column:ID"`
-	ContentID string    `json:"contentid"  gorm:"column:CONTENT_ID"`
-	UserID    string    `json:"userid"  gorm:"column:USER_ID"`
-	State     int       `json:"state"  gorm:"column:STATE"`
-	InTime    time.Time `json:"intime"  gorm:"column:IN_TIME"`
-	OutTime   time.Time `json:"outime"  gorm:"column:OUT_TIME"`
+	ID              int       `json:"id"  gorm:"column:ID"`
+	ContentID       string    `json:"contentid"  gorm:"column:CONTENT_ID"`
+	UserID          string    `json:"userid"  gorm:"column:USER_ID"`
+	CollectedUserID string    `json:"collecteduserid"  gorm:"column:COLLECTED_USER_ID"`
+	State           int       `json:"state"  gorm:"column:STATE"`
+	InTime          time.Time `json:"intime"  gorm:"column:IN_TIME"`
+	InTimeUnix      int64     `json:"intimeunix"  gorm:"column:IN_TIME_UNIX"`
+	OutTime         time.Time `json:"outime"  gorm:"column:OUT_TIME"`
+}
+
+type CollectList struct {
+	UserCollectContent
+	UserName      string `json:"username" gorm:"column:USER_NAME"`
+	UserAvatarUrl string `json:"useravatarurl" gorm:"column:USER_AVATAR_URL"`
+	ContentText   string `json:"contenttext" gorm:"column:CONTENT_TEXT"`
 }
 
 //小组
@@ -127,6 +139,7 @@ type Comment struct {
 	CommentCreatedTime     time.Time `json:"commentcreatedtime"  gorm:"column:COMMENT_CREATED_TIME"`
 	CommentCreatedTimeUnix int64     `json:"commentcreatedtimeunix"  gorm:"column:COMMENT_CREATED_TIME_UNIX"`
 	CommentContentID       string    `json:"commentcontentid"  gorm:"column:COMMENT_CONTENT_ID"`
+	CommentUserID          string    `json:"commentuserid"  gorm:"column:COMMENT_USER_ID"`
 	CommentText            string    `json:"commenttext"  gorm:"column:COMMENT_TEXT"`
 	CommentBackCommentID   string    `json:"commentbackcommentid"  gorm:"column:COMMENT_BACK_COMMENT_ID"`
 	CommentState           int       `json:"commentstate"  gorm:"column:COMMENT_STATE"`
@@ -138,6 +151,7 @@ type CommentList struct {
 	Comment
 	UserName      string `json:"username" gorm:"column:USER_NAME"`
 	UserAvatarUrl string `json:"useravatarurl" gorm:"column:USER_AVATAR_URL"`
+	ContentText   string `json:"contenttext" gorm:"column:CONTENT_TEXT"`
 }
 
 //folder
@@ -254,12 +268,16 @@ func LikeContent(openid string, contentid string) error {
 		userlikecontent UserLikeContent
 		content         Content
 	)
-
-	err := DB.Where("USER_ID = ? AND CONTENT_ID = ? ", openid, contentid).First(&userlikecontent).Error
-
+	err := DB.Where("CONTENT_ID = ? ", contentid).First(&content).Error
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	err = DB.Where("USER_ID = ? AND CONTENT_ID = ? ", openid, contentid).First(&userlikecontent).Error
+	timeUnix := time.Now().Unix()
 	//查询结果为空，新建一条记录
 	if err != nil {
-		userlikecontent = UserLikeContent{UserID: openid, ContentID: contentid, InTime: time.Now(), State: 1, OutTime: time.Date(1999, 4, 4, 0, 0, 0, 0, time.Local)}
+		userlikecontent = UserLikeContent{UserID: openid, LikedUserID: content.ContentCreatedBy, ContentID: contentid, InTime: time.Now(), InTimeUnix: timeUnix, State: 1, OutTime: time.Date(1999, 4, 4, 0, 0, 0, 0, time.Local)}
 
 		err = DB.Create(&userlikecontent).Error
 		if err != nil {
@@ -329,13 +347,20 @@ func GetLikeList(contentid string) (likelist []LikeList) {
 func CollectContent(openid string, contentid string) error {
 	var (
 		usercollectcontent UserCollectContent
+		content            Content
 	)
+	timeUnix := time.Now().Unix()
 
-	err := DB.Where("USER_ID = ? AND CONTENT_ID = ? ", openid, contentid).First(&usercollectcontent).Error
+	err := DB.Where("CONTENT_ID = ? ", contentid).First(&content).Error
+	if err != nil {
+		log.Println(err)
+		return err
+	}
 
+	err = DB.Where("USER_ID = ? AND CONTENT_ID = ? ", openid, contentid).First(&usercollectcontent).Error
 	//查询结果为空，新建一条记录
 	if err != nil {
-		usercollectcontent = UserCollectContent{UserID: openid, ContentID: contentid, InTime: time.Now(), State: 1, OutTime: time.Date(1999, 4, 4, 0, 0, 0, 0, time.Local)}
+		usercollectcontent = UserCollectContent{UserID: openid, CollectedUserID: content.ContentCreatedBy, ContentID: contentid, InTime: time.Now(), InTimeUnix: timeUnix, State: 1, OutTime: time.Date(1999, 4, 4, 0, 0, 0, 0, time.Local)}
 
 		err = DB.Create(&usercollectcontent).Error
 		if err != nil {
@@ -512,11 +537,17 @@ func CreateComment(openid string, text string, contentid string, commentbackuser
 	timeUnix := time.Now().Unix()                                                           //获取时间戳
 	randomnumber := rand.New(rand.NewSource(time.Now().UnixNano())).Int31n(1000000)         //获取六位随机数
 	var commentid = "C" + strconv.FormatInt(timeUnix, 10) + strconv.Itoa(int(randomnumber)) //组成唯一ID
+	var content Content
+	err := DB.Where("CONTENT_ID = ?", contentid).First(&content).Error
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
 
 	var comment = Comment{CommentID: commentid, CommentCreatedBy: openid, CommentCreatedTime: time.Now(), CommentCreatedTimeUnix: time.Now().Unix(),
-		CommentText: text, CommentContentID: contentid, CommentBackUserID: commentbackuserid, CommentState: 1, CommentIsBack: 0}
+		CommentText: text, CommentContentID: contentid, CommentUserID: content.ContentCreatedBy, CommentBackUserID: commentbackuserid, CommentState: 1, CommentIsBack: 0}
 
-	err := DB.Create(&comment).Error
+	err = DB.Create(&comment).Error
 	if err != nil {
 		log.Println(err)
 		return nil, err
@@ -561,6 +592,7 @@ func GetMyGroupList(openid string) (group []Group) {
 	return slice
 }
 
+//folder
 func CreateFolder(openid string, foldername string, parentid string) (*Folder, error) {
 	timeUnix := time.Now().Unix()                                                           //获取时间戳
 	randomnumber := rand.New(rand.NewSource(time.Now().UnixNano())).Int31n(1000000)         //获取六位随机数
@@ -576,6 +608,83 @@ func CreateFolder(openid string, foldername string, parentid string) (*Folder, e
 	return &folder, err
 }
 
-func getFoldList() {
+func GetFolderList(openid string, parentid string) (folder []Folder) {
 
+	err := DB.Where("FOLDER_CREATED_BY = ? AND FOLDER_STATE = ? AND FOLDER_PARENT_ID = ?", openid, 1, parentid).Find(&folder).Error
+
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+	return folder
+}
+
+func DeleteFolder(openid string, folderid string) error {
+	var folder Folder
+
+	err := DB.Model(&folder).Where("FOLDER_CREATED_BY = ? AND FOLDER_STATE = ? AND FOLDER_ID = ?", openid, 1, folderid).Update("FOLDER_STATE", 0).Error
+	if err != nil {
+		fmt.Println(err)
+		return err
+
+	}
+	return err
+}
+
+//message
+func GetLikeMessageList(openid string) (likelist []LikeList) {
+	var like []UserLikeContent
+	err := DB.Where("LIKED_USER_ID = ?", openid).Find(&like).Error
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+
+	slice := make([]LikeList, len(like))
+	DB.Table("user_like_content").Select("ID, CONTENT_ID, USER_ID, STATE, IN_TIME, OUT_TIME, LIKED_USER_ID, IN_TIME_UNIX").Where("USER_ID = ? AND STATE = ?", openid, 1).Scan(&slice)
+	for i := 0; i < len(like); i++ {
+		DB.Raw("SELECT USER_NAME, USER_AVATAR_URL FROM user WHERE USER_OPEN_ID = ?", like[i].UserID).First(&slice[i])
+		DB.Raw("SELECT CONTENT_TEXT FROM content WHERE CONTENT_ID = ?", like[i].ContentID).First(&slice[i])
+
+	}
+
+	return slice
+}
+
+func GetCommentMessageList(openid string) (commentlist []CommentList) {
+	var comment []Comment
+	err := DB.Where("COMMENT_USER_ID = ?", openid).Find(&comment).Error
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+
+	slice := make([]CommentList, len(comment))
+	DB.Table("comment").Select("COMMENT_ID, COMMENT_CREATED_BY, COMMENT_CREATED_TIME, COMMENT_CREATED_TIME_UNIX, COMMENT_CONTENT_ID, COMMENT_USER_ID, COMMENT_TEXT, COMMENT_BACK_COMMENT_ID, COMMENT_STATE, COMMENT_BACK_USER_ID, COMMENT_IS_BACK").Where("COMMENT_USER_ID = ? AND COMMENT_STATE = ?", openid, 1).Scan(&slice)
+	for i := 0; i < len(comment); i++ {
+		DB.Raw("SELECT USER_NAME, USER_AVATAR_URL FROM user WHERE USER_OPEN_ID = ?", comment[i].CommentCreatedBy).First(&slice[i])
+		DB.Raw("SELECT CONTENT_TEXT FROM content WHERE CONTENT_ID = ?", comment[i].CommentContentID).First(&slice[i])
+
+	}
+
+	return slice
+}
+
+func GetCollectMessageList(openid string) (collectlist []CollectList) {
+	var collect []UserCollectContent
+	err := DB.Where("COLLECTED_USER_ID = ?", openid).Find(&collect).Error
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+
+	slice := make([]CollectList, len(collect))
+	DB.Table("user_collect_content").Select("ID, CONTENT_ID, USER_ID, STATE, IN_TIME, OUT_TIME, COLLECTED_USER_ID, IN_TIME_UNIX").Where("USER_ID = ? AND STATE = ?", openid, 1).Scan(&slice)
+	for i := 0; i < len(collect); i++ {
+		DB.Raw("SELECT USER_NAME, USER_AVATAR_URL FROM user WHERE USER_OPEN_ID = ?", collect[i].UserID).First(&slice[i])
+		DB.Raw("SELECT CONTENT_TEXT FROM content WHERE CONTENT_ID = ?", collect[i].ContentID).First(&slice[i])
+
+	}
+
+	return slice
 }

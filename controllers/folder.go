@@ -39,3 +39,55 @@ func CreateFolder(c *gin.Context) {
 	})
 
 }
+
+func GetFolderList(c *gin.Context) {
+	var (
+		folder     = &models.Folder{}
+		folderlist interface{}
+	)
+
+	if err := c.ShouldBindJSON(&folder); err != nil {
+		// 返回错误信息
+		// gin.H封装了生成json数据的工具
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		fmt.Println("err:", err)
+		return
+	}
+
+	folderlist = models.GetFolderList(folder.FolderCreatedBy, folder.FolderParentID)
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":       1,
+		"folderlist": folderlist,
+	})
+
+}
+
+func DeleteFolder(c *gin.Context) {
+	var (
+		folder models.Folder
+	)
+
+	if err := c.ShouldBindJSON(&folder); err != nil {
+		// 返回错误信息
+		// gin.H封装了生成json数据的工具
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		fmt.Println("err:", err)
+		return
+	}
+
+	err := models.DeleteFolder(folder.FolderCreatedBy, folder.FolderID)
+
+	if err == nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code": 1,
+		})
+	}
+
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code": 0,
+		})
+	}
+
+}
