@@ -7,6 +7,7 @@ import (
 	_ "github.com/jinzhu/gorm/dialects/mysql"
 	"log"
 	"math/rand"
+	"os"
 	"strconv"
 	"time"
 )
@@ -64,6 +65,8 @@ type ContentWithUser struct {
 	IsLiked       int    `json:"isliked"`
 	IsCollected   int    `json:"iscollected"`
 	GroupName     string `json:"groupname"  gorm:"column:GROUP_NAME"`
+	FileType      string `json:"filetype" gorm:"column:FILE_TYPE"`
+	FileName      string `json:"filename" gorm:"column:FILE_NAME"`
 }
 
 //用户点赞表
@@ -163,6 +166,21 @@ type Folder struct {
 	FolderCreatedTimeUnix int64     `json:"foldercreatedtimeunix"  gorm:"column:FOLDER_CREATED_TIME_UNIX"`
 	FolderParentID        string    `json:"folderparentid" gorm:"column:FOLDER_PARENT_ID"`
 	FolderState           int       `json:"folderstate" gorm:"column:FOLDER_STATE"`
+}
+
+//file
+type File struct {
+	FileID              string    `json:"fileid" gorm:"column:FILE_ID"`
+	FileCreatedBy       string    `json:"filecreatedby" gorm:"column:FILE_CREATED_BY"`
+	FileCreatedTime     time.Time `json:"filecreatedtime" gorm:"column:FILE_CREATED_TIME"`
+	FileCreatedTimeUnix int64     `json:"filecreatedtimeunix" gorm:"column:FILE_CREATED_TIME_UNIX"`
+	FileName            string    `json:"filename" gorm:"column:FILE_NAME"`
+	FileSize            int64     `json:"filesize" gorm:"column:FILE_SIZE"`
+	FileContent         string    `json:"filecontent" gorm:"column:FILE_CONTENT"`
+	FileType            string    `json:"filetype" gorm:"column:FILE_TYPE"`
+	FileFolderID        string    `json:"filefolderid" gorm:"column:FILE_FOLDER_ID"`
+	FileState           int       `json:"filestate" gorm:"column:FILE_STATE"`
+	FileShare           int       `json:"fileshare" gorm:"column:FILE_SHARE"`
 }
 
 /*数据库*/
@@ -284,17 +302,18 @@ func LikeContent(openid string, contentid string) error {
 			log.Println(err)
 			return err
 		}
-		return err
+
+	} else {
+		//如果查询结果存在，且用户已不在改小组，则更新状态
+
+		err = DB.Model(&userlikecontent).Where("USER_ID = ? AND CONTENT_ID = ? AND STATE = ?", openid, contentid, 0).Update("STATE", 1).Error
+		if err != nil {
+			fmt.Println(err)
+			return err
+
+		}
 	}
 
-	//如果查询结果存在，且用户已不在改小组，则更新状态
-	userlikecontent.State = 1
-	err = DB.Model(&userlikecontent).Where("USER_ID = ? AND CONTENT_ID = ? AND STATE = ?", openid, contentid, 0).Update("STATE", 1).Error
-	if err != nil {
-		fmt.Println(err)
-		return err
-
-	}
 	DB.Where("CONTENT_ID = ?", contentid).First(&content)
 	err = DB.Model(&content).Where("CONTENT_ID = ?", contentid).Update("CONTENT_LIKES", content.ContentLikes+1).Error
 	if err != nil {
@@ -330,7 +349,7 @@ func UnlikeContent(openid string, contentid string) error {
 func GetLikeList(contentid string) (likelist []LikeList) {
 	var like []UserLikeContent
 
-	err := DB.Where("CONTENT_ID = ?", contentid).Find(&like).Error
+	err := DB.Where("CONTENT_ID = ?", contentid).Order("IN_TIME DESC").Find(&like).Error
 	if err != nil {
 		fmt.Println(err)
 		return nil
@@ -367,16 +386,16 @@ func CollectContent(openid string, contentid string) error {
 			log.Println(err)
 			return err
 		}
-		return err
-	}
 
-	//如果查询结果存在，且用户已不在改小组，则更新状态
-	usercollectcontent.State = 1
-	err = DB.Model(&usercollectcontent).Where("USER_ID = ? AND CONTENT_ID = ? AND STATE = ?", openid, contentid, 0).Update("STATE", 1).Error
-	if err != nil {
-		fmt.Println(err)
-		return err
+	} else {
+		//如果查询结果存在，且用户已不在改小组，则更新状态
 
+		err = DB.Model(&usercollectcontent).Where("USER_ID = ? AND CONTENT_ID = ? AND STATE = ?", openid, contentid, 0).Update("STATE", 1).Error
+		if err != nil {
+			fmt.Println(err)
+			return err
+
+		}
 	}
 
 	return err
@@ -400,7 +419,7 @@ func GetContentList(openid string, groupid string) (contentwithuser []ContentWit
 	var userlikecontent UserLikeContent
 	var usercollectcontent UserCollectContent
 	if groupid != "" {
-		err := DB.Where(" CONTENT_FROM = ?", groupid).Find(&content).Error
+		err := DB.Where(" CONTENT_FROM = ?", groupid).Order("CONTENT_CREATED_TIME DESC").Find(&content).Error
 		if err != nil {
 			fmt.Println(err)
 			return nil
@@ -408,7 +427,7 @@ func GetContentList(openid string, groupid string) (contentwithuser []ContentWit
 	}
 
 	if groupid == "" {
-		err := DB.Find(&content).Error
+		err := DB.Find(&content).Order("CONTENT_CREATED_TIME DESC").Error
 		if err != nil {
 			fmt.Println(err)
 			return nil
@@ -418,26 +437,30 @@ func GetContentList(openid string, groupid string) (contentwithuser []ContentWit
 	slice := make([]ContentWithUser, len(content))
 	if groupid != "" {
 		DB.Table("content").Select("CONTENT_ID, CONTENT_CREATED_BY, CONTENT_CREATED_TIME, CONTENT_TEXT, CONTENT_SHARE, CONTENT_SHARE_NUMBER, "+
-			"CONTENT_UPDATED_TIME, CONTENT_STATE, CONTENT_SHARE_TYPE, CONTENT_LIKES, CONTENT_COMMENTS, CONTENT_IS_HOT, CONTENT_CREATED_TIME_UNIX, CONTENT_UPDATED_TIME_UNIX").Where("CONTENT_FROM = ?", groupid).Scan(&slice)
+			"CONTENT_UPDATED_TIME, CONTENT_STATE, CONTENT_SHARE_TYPE, CONTENT_LIKES, CONTENT_COMMENTS, CONTENT_IS_HOT, CONTENT_CREATED_TIME_UNIX, CONTENT_UPDATED_TIME_UNIX, CONTENT_FROM").Where("CONTENT_FROM = ?", groupid).Order("CONTENT_CREATED_TIME DESC").Scan(&slice)
 	}
 
 	if groupid == "" {
 		DB.Table("content").Select("CONTENT_ID, CONTENT_CREATED_BY, CONTENT_CREATED_TIME, CONTENT_TEXT, CONTENT_SHARE, CONTENT_SHARE_NUMBER, " +
-			"CONTENT_UPDATED_TIME, CONTENT_STATE, CONTENT_SHARE_TYPE, CONTENT_LIKES, CONTENT_COMMENTS, CONTENT_IS_HOT, CONTENT_CREATED_TIME_UNIX, CONTENT_UPDATED_TIME_UNIX").Scan(&slice)
+			"CONTENT_UPDATED_TIME, CONTENT_STATE, CONTENT_SHARE_TYPE, CONTENT_LIKES, CONTENT_COMMENTS, CONTENT_IS_HOT, CONTENT_CREATED_TIME_UNIX, CONTENT_UPDATED_TIME_UNIX, CONTENT_FROM").Order("CONTENT_CREATED_TIME DESC").Scan(&slice)
 	}
 
 	for i := 0; i < len(content); i++ {
-		DB.Raw("SELECT USER_NAME, USER_AVATAR_URL FROM user WHERE USER_OPEN_ID = ?", content[i].ContentCreatedBy).First(&slice[i])
-		DB.Table("group").Select("GROUP_NAME").Where("GROUP_ID = ?", content[i].ContentFrom).Scan(&slice[i])
-		err := DB.Where("USER_ID = ? AND CONTENT_ID = ? AND STATE = ?", openid, content[i].ContentID, 1).First(&userlikecontent).Error
+		DB.Raw("SELECT USER_NAME, USER_AVATAR_URL FROM user WHERE USER_OPEN_ID = ?", slice[i].ContentCreatedBy).First(&slice[i])
+		DB.Table("group").Select("GROUP_NAME").Where("GROUP_ID = ?", slice[i].ContentFrom).Scan(&slice[i])
+		DB.Table("file").Select("FILE_NAME, FILE_TYPE").Where("FILE_ID = ?", slice[i].ContentShare).Scan(&slice[i])
+		err := DB.Where("USER_ID = ? AND CONTENT_ID = ? AND STATE = ?", openid, slice[i].ContentID, 1).First(&userlikecontent).Error
+		fmt.Println("1")
 		if err == nil {
 			slice[i].IsLiked = 1
+			fmt.Println("2")
 		}
 		if err != nil {
 			slice[i].IsLiked = 0
+			fmt.Println("3")
 		}
 
-		err = DB.Where("USER_ID = ? AND CONTENT_ID = ? AND STATE = ?", openid, content[i].ContentID, 1).First(&usercollectcontent).Error
+		err = DB.Where("USER_ID = ? AND CONTENT_ID = ? AND STATE = ?", openid, slice[i].ContentID, 1).First(&usercollectcontent).Error
 		if err == nil {
 			slice[i].IsCollected = 1
 		}
@@ -468,6 +491,7 @@ func CreateGroup(openid string, groupname string, groupremark string) (*Group, e
 
 func InGroup(openid string, groupid string) error {
 	var usergroup UserGroup
+	var group Group
 	err := DB.Where("USER_ID = ? AND GROUP_ID = ? ", openid, groupid).First(&usergroup).Error
 
 	//查询结果为空，新建一条记录
@@ -488,13 +512,21 @@ func InGroup(openid string, groupid string) error {
 	if err != nil {
 		fmt.Println(err)
 		return err
-
 	}
+
+	DB.Where("GROUP_ID = ?", groupid).First(&group)
+	err = DB.Model(&group).Where("GROUP_ID = ?", groupid).Update("GROUP_NUMBER", group.GroupNumber+1).Error
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
 	return err
 }
 
 func OutGroup(openid string, groupid string) error {
 	var usergroup UserGroup
+	var group Group
 
 	err := DB.Model(&usergroup).Where("USER_ID = ? AND GROUP_ID = ? AND STATE = ?", openid, groupid, 1).Update("STATE", 0).Error
 	if err != nil {
@@ -502,6 +534,14 @@ func OutGroup(openid string, groupid string) error {
 		return err
 
 	}
+
+	DB.Where("GROUP_ID = ?", groupid).First(&group)
+	err = DB.Model(&group).Where("GROUP_ID = ?", groupid).Update("GROUP_NUMBER", group.GroupNumber-1).Error
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
 	return err
 }
 
@@ -552,6 +592,14 @@ func CreateComment(openid string, text string, contentid string, commentbackuser
 		log.Println(err)
 		return nil, err
 	}
+
+	DB.Where("CONTENT_ID = ?", contentid).First(&content)
+	err = DB.Model(&content).Where("CONTENT_ID = ?", contentid).Update("CONTENT_COMMENTS", content.ContentComments+1).Error
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
 	return &comment, err
 
 }
@@ -565,7 +613,7 @@ func GetCommentList(contentid string) (commentlist []CommentList) {
 	}
 	slice := make([]CommentList, len(comment))
 	DB.Table("comment").Select("COMMENT_ID, COMMENT_CREATED_BY, COMMENT_CREATED_TIME, COMMENT_CREATED_TIME_UNIX, COMMENT_CONTENT_ID, "+
-		"COMMENT_TEXT, COMMENT_BACK_COMMENT_ID, COMMENT_STATE, COMMENT_BACK_USER_ID, COMMENT_IS_BACK").Where("COMMENT_CONTENT_ID = ?", contentid).Scan(&slice)
+		"COMMENT_TEXT, COMMENT_BACK_COMMENT_ID, COMMENT_STATE, COMMENT_BACK_USER_ID, COMMENT_IS_BACK").Where("COMMENT_CONTENT_ID = ?", contentid).Order("COMMENT_CREATED_TIME DESC").Scan(&slice)
 	for i := 0; i < len(comment); i++ {
 		DB.Raw("SELECT USER_NAME, USER_AVATAR_URL FROM user WHERE USER_OPEN_ID = ?", comment[i].CommentCreatedBy).First(&slice[i])
 	}
@@ -610,7 +658,7 @@ func CreateFolder(openid string, foldername string, parentid string) (*Folder, e
 
 func GetFolderList(openid string, parentid string) (folder []Folder) {
 
-	err := DB.Where("FOLDER_CREATED_BY = ? AND FOLDER_STATE = ? AND FOLDER_PARENT_ID = ?", openid, 1, parentid).Find(&folder).Error
+	err := DB.Where("FOLDER_CREATED_BY = ? AND FOLDER_STATE = ? AND FOLDER_PARENT_ID = ?", openid, 1, parentid).Order("FOLDER_CREATED_TIME DESC").Find(&folder).Error
 
 	if err != nil {
 		fmt.Println(err)
@@ -631,20 +679,72 @@ func DeleteFolder(openid string, folderid string) error {
 	return err
 }
 
+//file
+func CreateFile(openid string, filename string, filesize int64, filetype string, filepath string, foldid string) (string, error) {
+	timeUnix := time.Now().Unix()                                                        //获取时间戳
+	randomnumber := rand.New(rand.NewSource(time.Now().UnixNano())).Int31n(1000000)      //获取六位随机数
+	var fileid = "F" + strconv.FormatInt(timeUnix, 10) + strconv.Itoa(int(randomnumber)) //组成唯一ID
+
+	path := filepath + fileid + "." + filetype
+
+	var file = File{FileCreatedBy: openid, FileContent: path, FileCreatedTime: time.Now(), FileCreatedTimeUnix: timeUnix, FileID: fileid, FileName: filename, FileFolderID: foldid, FileShare: 0, FileSize: filesize, FileState: 1, FileType: filetype}
+
+	err := DB.Create(&file).Error
+	if err != nil {
+		log.Println(err)
+		return "", err
+	}
+	return fileid, err
+}
+
+func GetFileList(openid string, folderid string) (file []File) {
+
+	err := DB.Where("FILE_CREATED_BY = ? AND FILE_STATE = ? AND FILE_FOLDER_ID = ?", openid, 1, folderid).Order("FILE_CREATED_TIME DESC").Find(&file).Error
+
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+	return file
+}
+
+func DeleteFile(openid string, fileid string) error {
+	var file File
+
+	err := DB.Model(&file).Where("FILE_CREATED_BY = ? AND FILE_STATE = ? AND FILE_ID = ?", openid, 1, fileid).Update("FILE_STATE", 0).Error
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	err = DB.Where("FILE_CREATED_BY = ? AND FILE_STATE = ? AND FILE_ID = ?", openid, 0, fileid).First(&file).Error
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	err = os.Remove(file.FileContent)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	return err
+}
+
 //message
 func GetLikeMessageList(openid string) (likelist []LikeList) {
 	var like []UserLikeContent
-	err := DB.Where("LIKED_USER_ID = ?", openid).Find(&like).Error
+	err := DB.Where("LIKED_USER_ID = ? AND STATE = ?", openid, 1).Find(&like).Error
 	if err != nil {
 		fmt.Println(err)
 		return nil
 	}
 
 	slice := make([]LikeList, len(like))
-	DB.Table("user_like_content").Select("ID, CONTENT_ID, USER_ID, STATE, IN_TIME, OUT_TIME, LIKED_USER_ID, IN_TIME_UNIX").Where("USER_ID = ? AND STATE = ?", openid, 1).Scan(&slice)
+	DB.Table("user_like_content").Select("ID, CONTENT_ID, USER_ID, STATE, IN_TIME, OUT_TIME, LIKED_USER_ID, IN_TIME_UNIX").Where("USER_ID = ? AND STATE = ?", openid, 1).Order("IN_TIME DESC").Scan(&slice)
 	for i := 0; i < len(like); i++ {
-		DB.Raw("SELECT USER_NAME, USER_AVATAR_URL FROM user WHERE USER_OPEN_ID = ?", like[i].UserID).First(&slice[i])
-		DB.Raw("SELECT CONTENT_TEXT FROM content WHERE CONTENT_ID = ?", like[i].ContentID).First(&slice[i])
+		DB.Raw("SELECT USER_NAME, USER_AVATAR_URL FROM user WHERE USER_OPEN_ID = ?", slice[i].UserID).First(&slice[i])
+		DB.Raw("SELECT CONTENT_TEXT FROM content WHERE CONTENT_ID = ?", slice[i].ContentID).First(&slice[i])
 
 	}
 
@@ -660,10 +760,10 @@ func GetCommentMessageList(openid string) (commentlist []CommentList) {
 	}
 
 	slice := make([]CommentList, len(comment))
-	DB.Table("comment").Select("COMMENT_ID, COMMENT_CREATED_BY, COMMENT_CREATED_TIME, COMMENT_CREATED_TIME_UNIX, COMMENT_CONTENT_ID, COMMENT_USER_ID, COMMENT_TEXT, COMMENT_BACK_COMMENT_ID, COMMENT_STATE, COMMENT_BACK_USER_ID, COMMENT_IS_BACK").Where("COMMENT_USER_ID = ? AND COMMENT_STATE = ?", openid, 1).Scan(&slice)
+	DB.Table("comment").Select("COMMENT_ID, COMMENT_CREATED_BY, COMMENT_CREATED_TIME, COMMENT_CREATED_TIME_UNIX, COMMENT_CONTENT_ID, COMMENT_USER_ID, COMMENT_TEXT, COMMENT_BACK_COMMENT_ID, COMMENT_STATE, COMMENT_BACK_USER_ID, COMMENT_IS_BACK").Order("COMMENT_CREATED_TIME DESC").Where("COMMENT_USER_ID = ? AND COMMENT_STATE = ?", openid, 1).Scan(&slice)
 	for i := 0; i < len(comment); i++ {
-		DB.Raw("SELECT USER_NAME, USER_AVATAR_URL FROM user WHERE USER_OPEN_ID = ?", comment[i].CommentCreatedBy).First(&slice[i])
-		DB.Raw("SELECT CONTENT_TEXT FROM content WHERE CONTENT_ID = ?", comment[i].CommentContentID).First(&slice[i])
+		DB.Raw("SELECT USER_NAME, USER_AVATAR_URL FROM user WHERE USER_OPEN_ID = ?", slice[i].CommentCreatedBy).First(&slice[i])
+		DB.Raw("SELECT CONTENT_TEXT FROM content WHERE CONTENT_ID = ?", slice[i].CommentContentID).First(&slice[i])
 
 	}
 
@@ -679,10 +779,10 @@ func GetCollectMessageList(openid string) (collectlist []CollectList) {
 	}
 
 	slice := make([]CollectList, len(collect))
-	DB.Table("user_collect_content").Select("ID, CONTENT_ID, USER_ID, STATE, IN_TIME, OUT_TIME, COLLECTED_USER_ID, IN_TIME_UNIX").Where("USER_ID = ? AND STATE = ?", openid, 1).Scan(&slice)
+	DB.Table("user_collect_content").Select("ID, CONTENT_ID, USER_ID, STATE, IN_TIME, OUT_TIME, COLLECTED_USER_ID, IN_TIME_UNIX").Order("IN_TIME DESC").Where("USER_ID = ? AND STATE = ?", openid, 1).Scan(&slice)
 	for i := 0; i < len(collect); i++ {
-		DB.Raw("SELECT USER_NAME, USER_AVATAR_URL FROM user WHERE USER_OPEN_ID = ?", collect[i].UserID).First(&slice[i])
-		DB.Raw("SELECT CONTENT_TEXT FROM content WHERE CONTENT_ID = ?", collect[i].ContentID).First(&slice[i])
+		DB.Raw("SELECT USER_NAME, USER_AVATAR_URL FROM user WHERE USER_OPEN_ID = ?", slice[i].UserID).First(&slice[i])
+		DB.Raw("SELECT CONTENT_TEXT FROM content WHERE CONTENT_ID = ?", slice[i].ContentID).First(&slice[i])
 
 	}
 

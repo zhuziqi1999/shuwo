@@ -90,7 +90,9 @@ func main() {
 	router.POST("/getCommentList", controllers.GetCommentList)
 
 	//file
-	router.POST("/upload", controllers.UploadFile)
+	router.POST("/uploadFile", controllers.UploadFile)
+	router.POST("/getFileList", controllers.GetFileList)
+	router.POST("/deleteFile", controllers.DeleteFile)
 
 	//folder
 	router.POST("/createFolder", controllers.CreateFolder)

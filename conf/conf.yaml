@@ -22,3 +22,4 @@ dsn: root:123456@(127.0.0.1:3306)/zuccshare?charset=utf8&parseTime=True&loc=Loca
 notify_emails:
 page_size: 5
 smms_fileserver: https://sm.ms/api/upload
+upload_file_path: C:/gin-upload/

@@ -30,6 +30,7 @@ type Configuration struct {
 	NotifyEmails       string `yaml:"notify_emails"`  //notify_emails
 	PageSize           int    `yaml:"page_size"`      //page_size
 	SmmsFileServer     string `yaml:"smms_fileserver"`
+	UploadFilePath     string `yaml:"upload_file_path"`
 }
 
 const (
