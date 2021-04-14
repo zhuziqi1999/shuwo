@@ -41,6 +41,35 @@ func CreateComment(c *gin.Context) {
 
 }
 
+func DeleteComment(c *gin.Context) {
+	var (
+		comment models.Comment
+	)
+
+	if err := c.ShouldBindJSON(&comment); err != nil {
+		// 返回错误信息
+		// gin.H封装了生成json数据的工具
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		fmt.Println("err:", err)
+		return
+	}
+
+	err := models.DeleteComment(comment.CommentCreatedBy, comment.CommentID, comment.CommentContentID)
+
+	if err == nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code": 1,
+		})
+	}
+
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code": 0,
+		})
+	}
+
+}
+
 func GetCommentList(c *gin.Context) {
 	var (
 		comment interface{}

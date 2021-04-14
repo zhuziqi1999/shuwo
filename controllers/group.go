@@ -6,27 +6,37 @@ import (
 	"github.com/zhuziqi1999/shuwo/models"
 	"log"
 	"net/http"
+	"path/filepath"
+	"strings"
 )
 
 func CreateGroup(c *gin.Context) {
-	var (
-		group = &models.Group{}
-		res   = gin.H{}
-	)
+	//basePath := "C:/gin-upload/avatar/"
+	//TODO 文件上传地址
+	basePath := "/root/download/avatar/"
+	openid := c.PostForm("groupcreatedby")
+	groupname := c.PostForm("groupname")
+	groupremark := c.PostForm("groupremark")
 
-	if err := c.ShouldBindJSON(&group); err != nil {
-		// 返回错误信息
-		// gin.H封装了生成json数据的工具
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		fmt.Println("err:", err)
+	file, err := c.FormFile("file")
+	if err != nil {
+		c.String(http.StatusBadRequest, fmt.Sprintf("get form err: %s", err.Error()))
 		return
 	}
 
-	group, err := models.CreateGroup(group.GroupCreatedBy, group.GroupName, group.GroupRemark)
+	//获取后缀
+	names := strings.Split(file.Filename, ".")
+	filetype := names[len(names)-1]
+	fmt.Println(filetype)
+
+	group, err := models.CreateGroup(openid, groupname, groupremark, filetype)
 
 	if err != nil {
 		log.Println(err)
-		res["message"] = err.Error()
+		c.JSON(http.StatusExpectationFailed, gin.H{
+			"code": 0,
+			"err":  err,
+		})
 		return
 	}
 
@@ -34,7 +44,21 @@ func CreateGroup(c *gin.Context) {
 
 	if err != nil {
 		log.Println(err)
-		res["message"] = err.Error()
+		c.JSON(http.StatusExpectationFailed, gin.H{
+			"code": 0,
+			"err":  err,
+		})
+		return
+	}
+
+	fname := group.GroupID + "." + filetype
+	filename := basePath + filepath.Base(fname)
+
+	if err := c.SaveUploadedFile(file, filename); err != nil {
+		c.JSON(http.StatusExpectationFailed, gin.H{
+			"code":    0,
+			"message": err,
+		})
 		return
 	}
 

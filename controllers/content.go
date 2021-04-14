@@ -218,3 +218,32 @@ func UncollectContent(c *gin.Context) {
 
 	return
 }
+
+func DeleteContent(c *gin.Context) {
+	var (
+		content models.Content
+	)
+
+	if err := c.ShouldBindJSON(&content); err != nil {
+		// 返回错误信息
+		// gin.H封装了生成json数据的工具
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		fmt.Println("err:", err)
+		return
+	}
+
+	err := models.DeleteContent(content.ContentCreatedBy, content.ContentID)
+
+	if err == nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code": 1,
+		})
+	}
+
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code": 0,
+		})
+	}
+
+}

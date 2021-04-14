@@ -71,6 +71,7 @@ func main() {
 
 	//content
 	router.POST("/createContent", controllers.CreateContent)
+	router.POST("/deleteContent", controllers.DeleteContent)
 	router.POST("/getContentList", controllers.GetContentList)
 	router.POST("/likeContent", controllers.LikeContent)
 	router.POST("/unlikeContent", controllers.UnlikeContent)
@@ -88,11 +89,13 @@ func main() {
 	//comment
 	router.POST("/createComment", controllers.CreateComment)
 	router.POST("/getCommentList", controllers.GetCommentList)
+	router.POST("/deleteComment", controllers.DeleteComment)
 
 	//file
 	router.POST("/uploadFile", controllers.UploadFile)
 	router.POST("/getFileList", controllers.GetFileList)
 	router.POST("/deleteFile", controllers.DeleteFile)
+	router.POST("/saveFile", controllers.SaveFile)
 
 	//folder
 	router.POST("/createFolder", controllers.CreateFolder)

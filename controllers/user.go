@@ -48,7 +48,7 @@ func AppletsUserInfo(c *gin.Context) {
 
 func LoginApplets(c *gin.Context) {
 	var (
-		user = models.User{}
+		user = &models.User{}
 		res  = gin.H{}
 	)
 
@@ -60,7 +60,7 @@ func LoginApplets(c *gin.Context) {
 		return
 	}
 
-	err := models.GetUser(user.UserOpenid)
+	user, err := models.GetUser(user.UserOpenid)
 	if err != nil {
 		res["message"] = err.Error()
 		res["code"] = 0
@@ -69,9 +69,6 @@ func LoginApplets(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"code": 1,
-		"user": map[string]interface{}{
-			"UserOpenid": user.UserOpenid,
-			"UserName":   user.UserName,
-		},
+		"user": user,
 	})
 }

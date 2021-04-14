@@ -10,7 +10,9 @@ import (
 )
 
 func UploadFile(c *gin.Context) {
-	basePath := "C:/gin-upload/"
+	//basePath := "C:/gin-upload/"
+	//TODO 文件上传地址
+	basePath := "/root/download/"
 	name := c.PostForm("filename")
 	openid := c.PostForm("filecreatedby")
 	folderid := c.PostForm("filefolderid")
@@ -53,9 +55,46 @@ func UploadFile(c *gin.Context) {
 	})
 }
 
+func SaveFile(c *gin.Context) {
+	var (
+		file = &models.File{}
+	)
+
+	openid := c.PostForm("useropenid")
+	fileid := c.PostForm("fileid")
+	folderid := c.PostForm("folderid")
+
+	file, err := models.ReturnFile(fileid)
+	if err != nil {
+		fmt.Println(err)
+		c.JSON(http.StatusExpectationFailed, gin.H{
+			"code":    0,
+			"message": err,
+		})
+		return
+	}
+
+	fileid, err = models.CreateFile(openid, file.FileName, file.FileSize, file.FileType, file.FileContent, folderid)
+	if err != nil {
+		fmt.Println(err)
+		c.JSON(http.StatusExpectationFailed, gin.H{
+			"code":    0,
+			"message": err,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":   1,
+		"fileid": fileid,
+	})
+	return
+
+}
+
 func GetFileList(c *gin.Context) {
 	var (
-		file     = &models.File{}
+		file     = &models.FileList{}
 		filelist interface{}
 	)
 
@@ -67,7 +106,7 @@ func GetFileList(c *gin.Context) {
 		return
 	}
 
-	filelist = models.GetFileList(file.FileCreatedBy, file.FileFolderID)
+	filelist = models.GetFileList(file.FileCreatedBy, file.FileFolderID, file.Code1, file.Code2)
 
 	c.JSON(http.StatusOK, gin.H{
 		"code":     1,
