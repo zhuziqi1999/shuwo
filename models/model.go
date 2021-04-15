@@ -189,6 +189,12 @@ type FileList struct {
 	Code2 int `json:"code2" `
 }
 
+//search
+type Search struct {
+	UserOpenID string `json:"useropenid" `
+	Message    string `json:"message" `
+}
+
 /*数据库*/
 var DB *gorm.DB
 
@@ -963,4 +969,85 @@ func GetCollectMessageList(openid string) (collectlist []CollectList) {
 	}
 
 	return slice
+}
+
+func SearchContent(openid string, message string) (contentwithuser []ContentWithUser) {
+	var content []Content
+	var userlikecontent UserLikeContent
+	var usercollectcontent UserCollectContent
+
+	err := DB.Where("CONTENT_STATE = ? AND CONTENT_TEXT LIKE ?", 1, "%"+message+"%").Find(&content).Order("CONTENT_CREATED_TIME DESC").Error
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+
+	slice := make([]ContentWithUser, len(content))
+
+	DB.Table("content").Select("CONTENT_ID, CONTENT_CREATED_BY, CONTENT_CREATED_TIME, CONTENT_TEXT, CONTENT_SHARE, CONTENT_SHARE_NUMBER, "+
+		"CONTENT_UPDATED_TIME, CONTENT_STATE, CONTENT_SHARE_TYPE, CONTENT_LIKES, CONTENT_COMMENTS, CONTENT_IS_HOT, CONTENT_CREATED_TIME_UNIX, CONTENT_UPDATED_TIME_UNIX, CONTENT_FROM").Where("CONTENT_STATE = ? AND CONTENT_TEXT LIKE ? ", 1, "%"+message+"%").Order("CONTENT_CREATED_TIME DESC").Scan(&slice)
+
+	for i := 0; i < len(content); i++ {
+		DB.Raw("SELECT USER_NAME, USER_AVATAR_URL FROM user WHERE USER_OPEN_ID = ?", slice[i].ContentCreatedBy).First(&slice[i])
+		DB.Table("group").Select("GROUP_NAME").Where("GROUP_ID = ?", slice[i].ContentFrom).Scan(&slice[i])
+		DB.Table("file").Select("FILE_NAME, FILE_TYPE").Where("FILE_ID = ?", slice[i].ContentShare).Scan(&slice[i])
+		err := DB.Where("USER_ID = ? AND CONTENT_ID = ? AND STATE = ?", openid, slice[i].ContentID, 1).First(&userlikecontent).Error
+		fmt.Println("1")
+		if err == nil {
+			slice[i].IsLiked = 1
+			fmt.Println("2")
+		}
+		if err != nil {
+			slice[i].IsLiked = 0
+			fmt.Println("3")
+		}
+
+		err = DB.Where("USER_ID = ? AND CONTENT_ID = ? AND STATE = ?", openid, slice[i].ContentID, 1).First(&usercollectcontent).Error
+		if err == nil {
+			slice[i].IsCollected = 1
+		}
+		if err != nil {
+			slice[i].IsCollected = 0
+		}
+
+	}
+
+	return slice
+}
+
+func SearchGroup(openid string, message string) (grouplist []GroupList) {
+	var usergroup UserGroup
+	var group []Group
+	err := DB.Where("GROUP_STATE = ? AND GROUP_NAME LIKE ?", 1, "%"+message+"%").Find(&group).Error
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+	slice := make([]GroupList, len(group))
+
+	DB.Table("group").Select("GROUP_ID, GROUP_NAME, GROUP_REMARK, GROUP_NUMBER, GROUP_CREATED_BY, GROUP_CREATED_TIME, GROUP_STATE, GROUP_AVATAR_URL").Where("GROUP_STATE = ? AND GROUP_NAME LIKE ?", 1, "%"+message+"%").Scan(&slice)
+
+	for i := 0; i < len(group); i++ {
+		err = DB.Where("USER_ID = ? AND GROUP_ID = ? AND STATE = ?", openid, group[i].GroupID, 1).First(&usergroup).Error
+		if err == nil {
+			slice[i].IsInGroup = 1
+		}
+
+		if err != nil {
+			slice[i].IsInGroup = 0
+		}
+
+	}
+
+	return slice
+}
+
+func SearchFile(openid string, message string) (file []File) {
+	err := DB.Where("FILE_CREATED_BY = ? AND FILE_STATE = ? AND FILE_NAME LIKE ?", openid, 1, "%"+message+"%").Order("FILE_CREATED_TIME DESC").Find(&file).Error
+
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+	return file
 }

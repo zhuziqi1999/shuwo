@@ -107,6 +107,11 @@ func main() {
 	router.POST("/getCommentMessageList", controllers.GetCommentMessageList)
 	router.POST("/getCollectMessageList", controllers.GetCollectMessageList)
 
+	//search
+	router.POST("/searchContent", controllers.SearchContent)
+	router.POST("/searchGroup", controllers.SearchGroup)
+	router.POST("/searchFile", controllers.SearchFile)
+
 	http.ListenAndServe(cluster.Addr, router)
 
 }
