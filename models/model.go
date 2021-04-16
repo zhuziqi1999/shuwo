@@ -302,6 +302,23 @@ func CreateContent(openid string, text string, file string, groupid string) (*Co
 
 }
 
+func UpdateContent(openid string, contentid string, text string, file string, groupid string) (*Content, error) {
+	var (
+		content Content
+	)
+
+	timeUnix := time.Now().Unix()
+
+	err := DB.Model(&content).Where("CONTENT_CREATED_BY = ? AND CONTENT_ID = ?", openid, contentid).Updates(Content{ContentText: text, ContentShare: file, ContentUpdatedTime: time.Now(), ContentFrom: groupid, ContentUpdatedTimeUnix: timeUnix}).Error
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	return &content, err
+
+}
+
 func DeleteContent(openid string, contentid string) error {
 	var (
 		content Content
@@ -508,6 +525,107 @@ func GetContentList(openid string, groupid string) (contentwithuser []ContentWit
 		DB.Table("content").Select("CONTENT_ID, CONTENT_CREATED_BY, CONTENT_CREATED_TIME, CONTENT_TEXT, CONTENT_SHARE, CONTENT_SHARE_NUMBER, "+
 			"CONTENT_UPDATED_TIME, CONTENT_STATE, CONTENT_SHARE_TYPE, CONTENT_LIKES, CONTENT_COMMENTS, CONTENT_IS_HOT, CONTENT_CREATED_TIME_UNIX, CONTENT_UPDATED_TIME_UNIX, CONTENT_FROM").Where("CONTENT_STATE = ?", 1).Order("CONTENT_CREATED_TIME DESC").Scan(&slice)
 	}
+
+	for i := 0; i < len(content); i++ {
+		DB.Raw("SELECT USER_NAME, USER_AVATAR_URL FROM user WHERE USER_OPEN_ID = ?", slice[i].ContentCreatedBy).First(&slice[i])
+		DB.Table("group").Select("GROUP_NAME").Where("GROUP_ID = ?", slice[i].ContentFrom).Scan(&slice[i])
+		DB.Table("file").Select("FILE_NAME, FILE_TYPE").Where("FILE_ID = ?", slice[i].ContentShare).Scan(&slice[i])
+		err := DB.Where("USER_ID = ? AND CONTENT_ID = ? AND STATE = ?", openid, slice[i].ContentID, 1).First(&userlikecontent).Error
+		fmt.Println("1")
+		if err == nil {
+			slice[i].IsLiked = 1
+			fmt.Println("2")
+		}
+		if err != nil {
+			slice[i].IsLiked = 0
+			fmt.Println("3")
+		}
+
+		err = DB.Where("USER_ID = ? AND CONTENT_ID = ? AND STATE = ?", openid, slice[i].ContentID, 1).First(&usercollectcontent).Error
+		if err == nil {
+			slice[i].IsCollected = 1
+		}
+		if err != nil {
+			slice[i].IsCollected = 0
+		}
+
+	}
+
+	return slice
+}
+
+func GetFollowContentList(openid string) (contentwithuser []ContentWithUser) {
+	var (
+		content            []Content
+		userlikecontent    UserLikeContent
+		usercollectcontent UserCollectContent
+		usergroup          []UserGroup
+	)
+
+	err := DB.Where("USER_ID = ? AND STATE = ?", openid, 1).Find(&usergroup).Error
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+	groupid := make([]string, len(usergroup))
+	for i := 0; i < len(usergroup); i++ {
+		groupid[i] = usergroup[i].GroupID
+	}
+
+	err = DB.Where("CONTENT_STATE = ? AND CONTENT_FROM IN (?)", 1, groupid).Find(&content).Order("CONTENT_CREATED_TIME DESC").Error
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+
+	slice := make([]ContentWithUser, len(content))
+
+	DB.Table("content").Select("CONTENT_ID, CONTENT_CREATED_BY, CONTENT_CREATED_TIME, CONTENT_TEXT, CONTENT_SHARE, CONTENT_SHARE_NUMBER, "+
+		"CONTENT_UPDATED_TIME, CONTENT_STATE, CONTENT_SHARE_TYPE, CONTENT_LIKES, CONTENT_COMMENTS, CONTENT_IS_HOT, CONTENT_CREATED_TIME_UNIX, CONTENT_UPDATED_TIME_UNIX, CONTENT_FROM").Where("CONTENT_STATE = ? AND CONTENT_FROM IN (?)", 1, groupid).Order("CONTENT_CREATED_TIME DESC").Scan(&slice)
+
+	for i := 0; i < len(content); i++ {
+		DB.Raw("SELECT USER_NAME, USER_AVATAR_URL FROM user WHERE USER_OPEN_ID = ?", slice[i].ContentCreatedBy).First(&slice[i])
+		DB.Table("group").Select("GROUP_NAME").Where("GROUP_ID = ?", slice[i].ContentFrom).Scan(&slice[i])
+		DB.Table("file").Select("FILE_NAME, FILE_TYPE").Where("FILE_ID = ?", slice[i].ContentShare).Scan(&slice[i])
+		err := DB.Where("USER_ID = ? AND CONTENT_ID = ? AND STATE = ?", openid, slice[i].ContentID, 1).First(&userlikecontent).Error
+		fmt.Println("1")
+		if err == nil {
+			slice[i].IsLiked = 1
+			fmt.Println("2")
+		}
+		if err != nil {
+			slice[i].IsLiked = 0
+			fmt.Println("3")
+		}
+
+		err = DB.Where("USER_ID = ? AND CONTENT_ID = ? AND STATE = ?", openid, slice[i].ContentID, 1).First(&usercollectcontent).Error
+		if err == nil {
+			slice[i].IsCollected = 1
+		}
+		if err != nil {
+			slice[i].IsCollected = 0
+		}
+
+	}
+
+	return slice
+}
+
+func GetMyContentList(openid string) (contentwithuser []ContentWithUser) {
+	var content []Content
+	var userlikecontent UserLikeContent
+	var usercollectcontent UserCollectContent
+
+	err := DB.Where("CONTENT_CREATED_BY = ? AND CONTENT_STATE = ?", openid, 1).Order("CONTENT_CREATED_TIME DESC").Find(&content).Error
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+
+	slice := make([]ContentWithUser, len(content))
+
+	DB.Table("content").Select("CONTENT_ID, CONTENT_CREATED_BY, CONTENT_CREATED_TIME, CONTENT_TEXT, CONTENT_SHARE, CONTENT_SHARE_NUMBER, "+
+		"CONTENT_UPDATED_TIME, CONTENT_STATE, CONTENT_SHARE_TYPE, CONTENT_LIKES, CONTENT_COMMENTS, CONTENT_IS_HOT, CONTENT_CREATED_TIME_UNIX, CONTENT_UPDATED_TIME_UNIX, CONTENT_FROM").Where("CONTENT_CREATED_BY = ? AND CONTENT_STATE = ?", openid, 1).Order("CONTENT_CREATED_TIME DESC").Scan(&slice)
 
 	for i := 0; i < len(content); i++ {
 		DB.Raw("SELECT USER_NAME, USER_AVATAR_URL FROM user WHERE USER_OPEN_ID = ?", slice[i].ContentCreatedBy).First(&slice[i])
@@ -923,7 +1041,7 @@ func GetLikeMessageList(openid string) (likelist []LikeList) {
 	}
 
 	slice := make([]LikeList, len(like))
-	DB.Table("user_like_content").Select("ID, CONTENT_ID, USER_ID, STATE, IN_TIME, OUT_TIME, LIKED_USER_ID, IN_TIME_UNIX").Where("USER_ID = ? AND STATE = ?", openid, 1).Order("IN_TIME DESC").Scan(&slice)
+	DB.Table("user_like_content").Select("ID, CONTENT_ID, USER_ID, STATE, IN_TIME, OUT_TIME, LIKED_USER_ID, IN_TIME_UNIX").Where("LIKED_USER_ID = ? AND STATE = ?", openid, 1).Order("IN_TIME DESC").Scan(&slice)
 	for i := 0; i < len(like); i++ {
 		DB.Raw("SELECT USER_NAME, USER_AVATAR_URL FROM user WHERE USER_OPEN_ID = ?", slice[i].UserID).First(&slice[i])
 		DB.Raw("SELECT CONTENT_TEXT FROM content WHERE CONTENT_ID = ?", slice[i].ContentID).First(&slice[i])
@@ -961,7 +1079,7 @@ func GetCollectMessageList(openid string) (collectlist []CollectList) {
 	}
 
 	slice := make([]CollectList, len(collect))
-	DB.Table("user_collect_content").Select("ID, CONTENT_ID, USER_ID, STATE, IN_TIME, OUT_TIME, COLLECTED_USER_ID, IN_TIME_UNIX").Order("IN_TIME DESC").Where("USER_ID = ? AND STATE = ?", openid, 1).Scan(&slice)
+	DB.Table("user_collect_content").Select("ID, CONTENT_ID, USER_ID, STATE, IN_TIME, OUT_TIME, COLLECTED_USER_ID, IN_TIME_UNIX").Order("IN_TIME DESC").Where("COLLECTED_USER_ID = ? AND STATE = ?", openid, 1).Scan(&slice)
 	for i := 0; i < len(collect); i++ {
 		DB.Raw("SELECT USER_NAME, USER_AVATAR_URL FROM user WHERE USER_OPEN_ID = ?", slice[i].UserID).First(&slice[i])
 		DB.Raw("SELECT CONTENT_TEXT FROM content WHERE CONTENT_ID = ?", slice[i].ContentID).First(&slice[i])

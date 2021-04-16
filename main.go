@@ -71,8 +71,11 @@ func main() {
 
 	//content
 	router.POST("/createContent", controllers.CreateContent)
+	router.POST("/updateContent", controllers.UpdateContent)
 	router.POST("/deleteContent", controllers.DeleteContent)
 	router.POST("/getContentList", controllers.GetContentList)
+	router.POST("/getFollowContentList", controllers.GetFollowContentList)
+	router.POST("/getMyContentList", controllers.GetMyContentList)
 	router.POST("/likeContent", controllers.LikeContent)
 	router.POST("/unlikeContent", controllers.UnlikeContent)
 	router.POST("/getLikeList", controllers.GetLikeList)

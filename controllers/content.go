@@ -40,6 +40,38 @@ func CreateContent(c *gin.Context) {
 
 }
 
+func UpdateContent(c *gin.Context) {
+	var (
+		content = &models.Content{}
+		res     = gin.H{}
+	)
+
+	if err := c.ShouldBindJSON(&content); err != nil {
+		// 返回错误信息
+		// gin.H封装了生成json数据的工具
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		fmt.Println("err:", err)
+		return
+	}
+
+	content, err := models.UpdateContent(content.ContentCreatedBy, content.ContentID, content.ContentText, content.ContentShare, content.ContentFrom)
+
+	if err != nil {
+		log.Println(err)
+		res["message"] = err.Error()
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code": 1,
+		"user": map[string]interface{}{
+			"ContentID":       content.ContentID,
+			"ContentCreateBy": content.ContentCreatedBy,
+		},
+	})
+
+}
+
 func GetContentList(c *gin.Context) {
 	type n struct {
 		UserOpenID string `json:"useropenid"  gorm:"column:USER_OPEN_ID"`
@@ -60,6 +92,58 @@ func GetContentList(c *gin.Context) {
 	}
 
 	content = models.GetContentList(group.UserOpenID, group.GroupID)
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    1,
+		"content": content,
+	})
+
+}
+
+func GetFollowContentList(c *gin.Context) {
+
+	var (
+		content interface{}
+		user    models.User
+	)
+
+	if err := c.ShouldBindJSON(&user); err != nil {
+		// 返回错误信息
+		// gin.H封装了生成json数据的工具
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		fmt.Println("err:", err)
+		return
+	}
+
+	content = models.GetFollowContentList(user.UserOpenid)
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    1,
+		"content": content,
+	})
+
+}
+
+func GetMyContentList(c *gin.Context) {
+	type n struct {
+		UserOpenID string `json:"useropenid"  gorm:"column:USER_OPEN_ID"`
+		GroupID    string `json:"groupid"  gorm:"column:GROUP_ID"`
+	}
+
+	var (
+		content interface{}
+		group   n
+	)
+
+	if err := c.ShouldBindJSON(&group); err != nil {
+		// 返回错误信息
+		// gin.H封装了生成json数据的工具
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		fmt.Println("err:", err)
+		return
+	}
+
+	content = models.GetMyContentList(group.UserOpenID)
 
 	c.JSON(http.StatusOK, gin.H{
 		"code":    1,
